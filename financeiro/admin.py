@@ -7,10 +7,15 @@ from .models import (
     CartaoCredito,
     Categoria,
     ConfiguracaoUsuario,
+    EventoAssinatura,
     Investimento,
     Lancamento,
+    LimiteCategoriaContencao,
     MetaFinanceira,
+    MembroOrcamento,
+    OrcamentoCompartilhado,
     PlanoUsuario,
+    PlanoContencao,
 )
 
 
@@ -39,14 +44,51 @@ class LancamentoAdmin(admin.ModelAdmin):
     list_display = (
         "descricao",
         "tipo",
+        "escopo",
+        "orcamento_compartilhado",
         "usuario",
         "valor",
         "categoria",
         "status",
         "data_competencia",
     )
-    list_filter = ("tipo", "status", "forma_pagamento", "usuario")
+    list_filter = ("tipo", "escopo", "status", "forma_pagamento", "usuario")
     search_fields = ("descricao", "observacao")
+
+
+class MembroOrcamentoInline(admin.TabularInline):
+    """Exibe os participantes dentro do orçamento compartilhado."""
+
+    model = MembroOrcamento
+    extra = 0
+
+
+@admin.register(OrcamentoCompartilhado)
+class OrcamentoCompartilhadoAdmin(admin.ModelAdmin):
+    """Configuração visual dos orçamentos compartilhados no admin."""
+
+    list_display = ("nome", "tipo", "dono", "codigo_convite", "ativo", "criado_em")
+    list_filter = ("tipo", "ativo", "dono")
+    search_fields = ("nome", "codigo_convite", "dono__username", "dono__email")
+    readonly_fields = ("codigo_convite",)
+    inlines = [MembroOrcamentoInline]
+
+
+class LimiteCategoriaContencaoInline(admin.TabularInline):
+    """Permite visualizar limites por categoria dentro do plano."""
+
+    model = LimiteCategoriaContencao
+    extra = 0
+
+
+@admin.register(PlanoContencao)
+class PlanoContencaoAdmin(admin.ModelAdmin):
+    """Configuracao visual do modo anti-descontrole no admin."""
+
+    list_display = ("titulo", "usuario", "duracao_dias", "data_inicio", "data_fim", "orcamento_total", "status")
+    list_filter = ("status", "duracao_dias", "usuario")
+    search_fields = ("titulo", "usuario__username", "usuario__email")
+    inlines = [LimiteCategoriaContencaoInline]
 
 
 @admin.register(MetaFinanceira)
@@ -78,6 +120,7 @@ class ConfiguracaoUsuarioAdmin(admin.ModelAdmin):
         "receber_alertas_email",
         "receber_alertas_vencimento",
         "exibir_saldo_dashboard",
+        "foto_perfil",
     )
     list_filter = ("moeda_padrao", "formato_data", "receber_alertas_email", "receber_alertas_vencimento")
     search_fields = ("usuario__username", "usuario__email")
@@ -99,6 +142,47 @@ class PlanoUsuarioAdmin(admin.ModelAdmin):
     )
     list_filter = ("nome_plano", "status", "ia_habilitada")
     search_fields = ("usuario__username", "usuario__email")
+
+
+@admin.register(EventoAssinatura)
+class EventoAssinaturaAdmin(admin.ModelAdmin):
+    """Auditoria dos eventos de assinatura e cobranca."""
+
+    list_display = (
+        "tipo",
+        "origem",
+        "usuario",
+        "status_gateway",
+        "mercado_pago_preapproval_id",
+        "mercado_pago_tipo",
+        "criado_em",
+    )
+    list_filter = ("tipo", "origem", "status_gateway", "mercado_pago_tipo", "criado_em")
+    search_fields = (
+        "usuario__username",
+        "usuario__email",
+        "mercado_pago_preapproval_id",
+        "mercado_pago_evento_id",
+        "referencia_externa",
+        "mensagem",
+    )
+    readonly_fields = (
+        "usuario",
+        "plano",
+        "tipo",
+        "origem",
+        "mercado_pago_preapproval_id",
+        "mercado_pago_evento_id",
+        "mercado_pago_tipo",
+        "mercado_pago_acao",
+        "status_gateway",
+        "referencia_externa",
+        "valor",
+        "moeda",
+        "mensagem",
+        "payload",
+        "criado_em",
+    )
 
 
 @admin.register(AnaliseFinanceiraIA)

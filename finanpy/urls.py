@@ -2,12 +2,16 @@
 
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
+from django.conf import settings
+from django.conf.urls.static import static
 from django.urls import include, path
 
 from financeiro import views as financeiro_views
 
 
 urlpatterns = [
+    # Endpoint publico usado por monitoramento e health checks de deploy.
+    path("healthz/", financeiro_views.healthcheck, name="healthcheck"),
     # Painel administrativo nativo do Django.
     path("admin/", admin.site.urls),
     # Pagina inicial decide entre cadastro ou painel.
@@ -30,3 +34,6 @@ urlpatterns = [
     # Cadastro de novos usuarios em uma view nossa.
     path("cadastro/", financeiro_views.registrar_usuario, name="registrar_usuario"),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

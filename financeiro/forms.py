@@ -1,12 +1,23 @@
 """Formularios do app financeiro."""
 
+from decimal import Decimal
+
 from django import forms
 from django.contrib.auth import password_validation
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
-from .models import CartaoCredito, Categoria, ConfiguracaoUsuario, Investimento, Lancamento, MetaFinanceira
+from .models import (
+    CartaoCredito,
+    Categoria,
+    ConfiguracaoUsuario,
+    Investimento,
+    Lancamento,
+    MetaFinanceira,
+    OrcamentoCompartilhado,
+    PlanoContencao,
+)
 
 
 class BootstrapFormMixin:
@@ -119,6 +130,58 @@ class ConfiguracaoUsuarioForm(forms.ModelForm, BootstrapFormMixin):
         self.aplicar_bootstrap()
 
 
+class MoedaPerfilForm(forms.ModelForm, BootstrapFormMixin):
+    """Formulario enxuto para alterar a moeda exibida no perfil."""
+
+    class Meta:
+        model = ConfiguracaoUsuario
+        fields = ["moeda_padrao"]
+        labels = {
+            "moeda_padrao": "Moeda principal",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.aplicar_bootstrap()
+
+
+class FotoPerfilForm(forms.ModelForm, BootstrapFormMixin):
+    """Formulario para troca segura da foto do usuario."""
+
+    class Meta:
+        model = ConfiguracaoUsuario
+        fields = ["foto_perfil"]
+        labels = {
+            "foto_perfil": "Foto de perfil",
+        }
+        widgets = {
+            "foto_perfil": forms.FileInput(attrs={"accept": "image/png,image/jpeg,image/webp"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.aplicar_bootstrap()
+
+    def clean_foto_perfil(self):
+        """Limita tamanho e extensao para evitar uploads inadequados."""
+        arquivo = self.cleaned_data.get("foto_perfil")
+
+        if not arquivo:
+            return arquivo
+
+        extensoes_permitidas = {".jpg", ".jpeg", ".png", ".webp"}
+        nome_arquivo = arquivo.name.lower()
+
+        if not any(nome_arquivo.endswith(extensao) for extensao in extensoes_permitidas):
+            raise forms.ValidationError("Envie uma imagem nos formatos JPG, PNG ou WEBP.")
+
+        limite_bytes = 2 * 1024 * 1024
+        if arquivo.size > limite_bytes:
+            raise forms.ValidationError("A foto precisa ter no maximo 2 MB.")
+
+        return arquivo
+
+
 class AlterarSenhaPerfilForm(BootstrapFormMixin, forms.Form):
     """Formulario simples para troca de senha dentro do painel."""
 
@@ -210,6 +273,8 @@ class LancamentoForm(forms.ModelForm, BootstrapFormMixin):
         model = Lancamento
         fields = [
             "tipo",
+            "escopo",
+            "orcamento_compartilhado",
             "descricao",
             "valor",
             "categoria",
@@ -224,6 +289,8 @@ class LancamentoForm(forms.ModelForm, BootstrapFormMixin):
         ]
         labels = {
             "tipo": "Tipo do lancamento",
+            "escopo": "Conta",
+            "orcamento_compartilhado": "Orçamento conjunto",
             "descricao": "Descricao",
             "valor": "Valor",
             "categoria": "Categoria",
@@ -245,20 +312,34 @@ class LancamentoForm(forms.ModelForm, BootstrapFormMixin):
 
     def __init__(self, *args, **kwargs):
         usuario = kwargs.pop("usuario", None)
+        familia_liberada = kwargs.pop("familia_liberada", False)
         super().__init__(*args, **kwargs)
+        self.usuario = usuario
+        self.familia_liberada = familia_liberada
         self.aplicar_bootstrap()
 
         if usuario is not None:
             self.fields["categoria"].queryset = Categoria.objects.filter(usuario=usuario)
             self.fields["cartao"].queryset = CartaoCredito.objects.filter(usuario=usuario, ativo=True)
+            self.fields["orcamento_compartilhado"].queryset = OrcamentoCompartilhado.objects.filter(
+                ativo=True,
+                membros__usuario=usuario,
+            ).distinct()
 
         self.fields["cartao"].required = False
         self.fields["data_pagamento"].required = False
+        self.fields["orcamento_compartilhado"].required = False
+
+        if not familia_liberada or not self.fields["orcamento_compartilhado"].queryset.exists():
+            self.fields["escopo"].choices = [(Lancamento.ESCOPO_INDIVIDUAL, "Individual")]
+            self.fields["orcamento_compartilhado"].widget = forms.HiddenInput()
 
     def clean(self):
         """Valida regras de negocio simples antes de salvar."""
         cleaned_data = super().clean()
         tipo = cleaned_data.get("tipo")
+        escopo = cleaned_data.get("escopo")
+        orcamento_compartilhado = cleaned_data.get("orcamento_compartilhado")
         categoria = cleaned_data.get("categoria")
         forma_pagamento = cleaned_data.get("forma_pagamento")
         cartao = cleaned_data.get("cartao")
@@ -267,6 +348,16 @@ class LancamentoForm(forms.ModelForm, BootstrapFormMixin):
 
         if categoria and tipo and categoria.tipo != tipo:
             self.add_error("categoria", "Escolha uma categoria do mesmo tipo do lancamento.")
+
+        if escopo == Lancamento.ESCOPO_COMPARTILHADO:
+            if not self.familia_liberada:
+                self.add_error("escopo", "Contas conjuntas fazem parte do plano Premium.")
+            if not orcamento_compartilhado:
+                self.add_error("orcamento_compartilhado", "Escolha o orçamento conjunto.")
+            elif self.usuario and not orcamento_compartilhado.membros.filter(usuario=self.usuario).exists():
+                self.add_error("orcamento_compartilhado", "Você não faz parte deste orçamento.")
+        else:
+            cleaned_data["orcamento_compartilhado"] = None
 
         if forma_pagamento == Lancamento.FORMA_CREDITO and not cartao and tipo == Lancamento.TIPO_DESPESA:
             self.add_error("cartao", "Selecione um cartao para despesas no credito.")
@@ -280,6 +371,37 @@ class LancamentoForm(forms.ModelForm, BootstrapFormMixin):
             cleaned_data["cartao"] = None
 
         return cleaned_data
+
+
+class OrcamentoCompartilhadoForm(forms.ModelForm, BootstrapFormMixin):
+    """Formulario para criar um orçamento compartilhado premium."""
+
+    class Meta:
+        model = OrcamentoCompartilhado
+        fields = ["nome", "tipo"]
+        labels = {
+            "nome": "Nome do orçamento",
+            "tipo": "Modo de uso",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.aplicar_bootstrap()
+
+
+class ConviteOrcamentoForm(BootstrapFormMixin, forms.Form):
+    """Formulario para entrar em um orçamento usando código de convite."""
+
+    codigo_convite = forms.CharField(label="Código de convite", max_length=12)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.aplicar_bootstrap()
+        self.fields["codigo_convite"].widget.attrs["placeholder"] = "Exemplo: A1B2C3D4E5"
+
+    def clean_codigo_convite(self):
+        """Padroniza o código digitado para facilitar a busca."""
+        return self.cleaned_data["codigo_convite"].strip().upper()
 
 
 class MetaFinanceiraForm(forms.ModelForm, BootstrapFormMixin):
@@ -416,3 +538,112 @@ class AnaliseFinanceiraIAForm(BootstrapFormMixin, forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.aplicar_bootstrap()
+
+
+class SimuladorDecisaoForm(BootstrapFormMixin, forms.Form):
+    """Formulario premium para simular uma decisao financeira antes da compra."""
+
+    TIPO_COMPRA_UNICA = "COMPRA_UNICA"
+    TIPO_PARCELADA = "PARCELADA"
+    TIPO_CHOICES = [
+        (TIPO_COMPRA_UNICA, "Compra unica"),
+        (TIPO_PARCELADA, "Compra parcelada"),
+    ]
+
+    PRIORIDADE_NECESSARIA = "NECESSARIA"
+    PRIORIDADE_IMPORTANTE = "IMPORTANTE"
+    PRIORIDADE_DESEJO = "DESEJO"
+    PRIORIDADE_CHOICES = [
+        (PRIORIDADE_NECESSARIA, "Necessaria"),
+        (PRIORIDADE_IMPORTANTE, "Importante"),
+        (PRIORIDADE_DESEJO, "Desejo"),
+    ]
+
+    descricao = forms.CharField(
+        label="Nome da decisao",
+        max_length=120,
+        help_text="Exemplo: celular novo, curso, viagem ou compra no cartao.",
+    )
+    tipo = forms.ChoiceField(label="Tipo da decisao", choices=TIPO_CHOICES)
+    prioridade = forms.ChoiceField(label="Prioridade", choices=PRIORIDADE_CHOICES)
+    valor_total = forms.DecimalField(
+        label="Valor total",
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+    )
+    quantidade_parcelas = forms.IntegerField(
+        label="Quantidade de parcelas",
+        min_value=1,
+        max_value=48,
+        initial=1,
+    )
+    mes_inicio = forms.DateField(
+        label="Mes de inicio",
+        widget=forms.DateInput(attrs={"type": "month"}),
+        input_formats=["%Y-%m"],
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.aplicar_bootstrap()
+
+    def clean(self):
+        """Ajusta parcelas para compra unica e valida combinacoes simples."""
+        cleaned_data = super().clean()
+        tipo = cleaned_data.get("tipo")
+
+        if tipo == self.TIPO_COMPRA_UNICA:
+            cleaned_data["quantidade_parcelas"] = 1
+
+        return cleaned_data
+
+
+class PlanoContencaoForm(BootstrapFormMixin, forms.Form):
+    """Formulario premium para ativar o modo anti-descontrole."""
+
+    titulo = forms.CharField(
+        label="Nome do plano",
+        max_length=120,
+        initial="Modo anti-descontrole",
+    )
+    duracao_dias = forms.ChoiceField(
+        label="Duração",
+        choices=PlanoContencao.DURACAO_CHOICES,
+    )
+    orcamento_total = forms.DecimalField(
+        label="Orçamento total do período",
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+    )
+    categorias = forms.ModelMultipleChoiceField(
+        label="Categorias monitoradas",
+        queryset=Categoria.objects.none(),
+        widget=forms.CheckboxSelectMultiple,
+    )
+
+    def __init__(self, *args, **kwargs):
+        usuario = kwargs.pop("usuario", None)
+        super().__init__(*args, **kwargs)
+
+        if usuario is not None:
+            self.fields["categorias"].queryset = Categoria.objects.filter(
+                usuario=usuario,
+                tipo=Categoria.TIPO_DESPESA,
+            )
+
+        self.aplicar_bootstrap()
+        self.fields["categorias"].widget.attrs["class"] = "category-check-list"
+
+    def clean_duracao_dias(self):
+        return int(self.cleaned_data["duracao_dias"])
+
+    def clean(self):
+        cleaned_data = super().clean()
+        categorias = cleaned_data.get("categorias")
+
+        if categorias is not None and not categorias.exists():
+            self.add_error("categorias", "Selecione pelo menos uma categoria de despesa.")
+
+        return cleaned_data

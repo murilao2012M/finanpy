@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero-panel mb-4">
+    <div>
+        <span class="eyebrow">Decisão antes do gasto</span>
+        <h1 class="page-title">Simulador de Decisões</h1>
+        <p class="page-subtitle">Veja como uma compra impacta seu saldo previsto antes de assumir o compromisso.</p>
+    </div>
+    {% if simulador_liberado %}
+        <span class="status-pill status-paid">
+            <i class="fa-solid fa-crown me-2"></i>
+            Premium liberado
+        </span>
+    {% else %}
+        <form method="post" action="{% url 'checkout_premium' %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-premium">
+                <i class="fa-solid fa-lock-open me-2"></i>
+                Liberar no Premium
+            </button>
+        </form>
+    {% endif %}
+</section>
+
+<div class="dashboard-layout">
+    <section class="card-modern card-body-modern decision-simulator-panel">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Nova simulação</h2>
+                <p class="panel-subtitle">Informe o valor, quantidade de parcelas e mês de início.</p>
+            </div>
+        </div>
+
+        {% if simulador_liberado %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.descricao.id_for_label }}" class="field-label">{{ form.descricao.label }}</label>
+                        {{ form.descricao }}
+                        {% if form.descricao.help_text %}
+                            <div class="form-text register-help-text">{{ form.descricao.help_text }}</div>
+                        {% endif %}
+                        {% for error in form.descricao.errors %}
+                            <div class="text-danger small mt-1">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.tipo.id_for_label }}" class="field-label">{{ form.tipo.label }}</label>
+                        {{ form.tipo }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.prioridade.id_for_label }}" class="field-label">{{ form.prioridade.label }}</label>
+                        {{ form.prioridade }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="{{ form.valor_total.id_for_label }}" class="field-label">{{ form.valor_total.label }}</label>
+                        {{ form.valor_total }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="{{ form.quantidade_parcelas.id_for_label }}" class="field-label">{{ form.quantidade_parcelas.label }}</label>
+                        {{ form.quantidade_parcelas }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="{{ form.mes_inicio.id_for_label }}" class="field-label">{{ form.mes_inicio.label }}</label>
+                        {{ form.mes_inicio }}
+                    </div>
+                </div>
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <div class="text-danger small mb-2">{{ error }}</div>
+                    {% endfor %}
+                {% endfor %}
+                <button type="submit" class="btn btn-premium w-100">
+                    <i class="fa-solid fa-calculator me-2"></i>
+                    Simular decisão
+                </button>
+            </form>
+        {% else %}
+            <div class="decision-locked">
+                <div class="decision-lock-icon">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h3>Recurso exclusivo do Premium</h3>
+                <p>O simulador compara a compra com suas receitas, despesas e saldo previsto para mostrar se a decisão cabe no orçamento.</p>
+                <form method="post" action="{% url 'checkout_premium' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-premium">Assinar Premium por R$ 10,50/mês</button>
+                </form>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="card-modern card-body-modern decision-summary-panel">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Leitura da decisão</h2>
+                <p class="panel-subtitle">O resultado aparece aqui depois da simulação.</p>
+            </div>
+        </div>
+
+        {% if resultado %}
+            <div class="decision-result decision-risk-{{ resultado.nivel_risco|lower }}">
+                <span class="status-pill">{{ resultado.nivel_risco }}</span>
+                <h3>{{ resultado.recomendacao }}</h3>
+                <p>{{ resultado.explicacao }}</p>
+            </div>
+            <div class="decision-kpis">
+                <article class="goal-summary-card">
+                    <span>Valor total</span>
+                    <strong>R$ {{ resultado.valor_total }}</strong>
+                </article>
+                <article class="goal-summary-card">
+                    <span>Parcela</span>
+                    <strong>R$ {{ resultado.valor_parcela|floatformat:2 }}</strong>
+                </article>
+                <article class="goal-summary-card">
+                    <span>Maior impacto</span>
+                    <strong>{{ resultado.maior_comprometimento }}%</strong>
+                </article>
+                <article class="goal-summary-card">
+                    <span>Meses negativos</span>
+                    <strong>{{ resultado.meses_negativos }}</strong>
+                </article>
+            </div>
+        {% else %}
+            <div class="empty-state-inline">
+                Simule uma compra para ver recomendação, risco e impacto mensal.
+            </div>
+        {% endif %}
+    </section>
+</div>
+
+{% if resultado %}
+    <section class="card-modern card-body-modern mt-4">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Impacto mês a mês</h2>
+                <p class="panel-subtitle">Comparativo entre o saldo previsto atual e o saldo após a decisão.</p>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-dark-finance align-middle">
+                <thead>
+                    <tr>
+                        <th>Mês</th>
+                        <th>Receitas</th>
+                        <th>Despesas</th>
+                        <th>Saldo previsto</th>
+                        <th>Impacto</th>
+                        <th>Saldo após decisão</th>
+                        <th>Comprometimento</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mes in resultado.meses %}
+                        <tr>
+                            <td>{{ mes.mes }}</td>
+                            <td>R$ {{ mes.receitas }}</td>
+                            <td>R$ {{ mes.despesas }}</td>
+                            <td>R$ {{ mes.saldo_previsto }}</td>
+                            <td>R$ {{ mes.impacto|floatformat:2 }}</td>
+                            <td class="{% if mes.saldo_apos_decisao < 0 %}text-danger{% else %}text-success{% endif %}">
+                                R$ {{ mes.saldo_apos_decisao|floatformat:2 }}
+                            </td>
+                            <td>{{ mes.comprometimento }}%</td>
+                            <td>
+                                <span class="status-pill {% if mes.status == 'CRITICO' %}status-overdue{% elif mes.status == 'ATENCAO' or mes.status == 'CUIDADO' %}status-pending{% else %}status-paid{% endif %}">
+                                    {{ mes.status_label }}
+                                </span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+{% endif %}
+{% endblock %}

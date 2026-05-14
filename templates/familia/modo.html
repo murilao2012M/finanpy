@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero-panel family-hero mb-4">
+    <div>
+        <span class="eyebrow">Premium colaborativo</span>
+        <h1 class="page-title">Modo Casal/Família</h1>
+        <p class="page-subtitle">
+            Compartilhe um orçamento com outra pessoa e acompanhe contas individuais e contas conjuntas sem misturar tudo.
+        </p>
+    </div>
+    {% if familia_liberada %}
+        <form method="get" class="toolbar-filter">
+            {% if orcamento_selecionado %}
+                <input type="hidden" name="grupo" value="{{ orcamento_selecionado.id }}">
+            {% endif %}
+            <div>
+                <label for="mes" class="field-label">Período</label>
+                <div class="month-filter">
+                    <i class="fa-regular fa-calendar"></i>
+                    <input type="month" name="mes" id="mes" value="{{ mes_filtro }}" class="form-control">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-premium">Atualizar</button>
+        </form>
+    {% else %}
+        <form method="post" action="{% url 'checkout_premium' %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-premium">
+                <i class="fa-solid fa-lock-open me-2"></i>
+                Liberar no Premium
+            </button>
+        </form>
+    {% endif %}
+</section>
+
+{% if not familia_liberada %}
+    <section class="card-modern card-body-modern">
+        <div class="decision-locked family-locked">
+            <div class="decision-lock-icon">
+                <i class="fa-solid fa-people-roof"></i>
+            </div>
+            <h3>Recurso exclusivo do Premium</h3>
+            <p>
+                O Modo Casal/Família permite dividir a visão financeira entre gastos pessoais e gastos compartilhados,
+                ideal para casais, família ou pessoas que dividem casa.
+            </p>
+            <form method="post" action="{% url 'checkout_premium' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-premium">Assinar Premium por R$ 10,50/mês</button>
+            </form>
+        </div>
+    </section>
+{% else %}
+    <div class="dashboard-layout mb-4">
+        <section class="card-modern card-body-modern family-setup-card">
+            <div class="panel-header mb-4">
+                <div>
+                    <h2 class="panel-title">Criar orçamento compartilhado</h2>
+                    <p class="panel-subtitle">Crie um espaço para contas conjuntas e envie o código para a outra pessoa.</p>
+                </div>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="acao" value="criar_orcamento">
+                <div class="row">
+                    {% for field in form_criar %}
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn btn-premium w-100">
+                    <i class="fa-solid fa-plus me-2"></i>
+                    Criar orçamento
+                </button>
+            </form>
+        </section>
+
+        <section class="card-modern card-body-modern family-setup-card">
+            <div class="panel-header mb-4">
+                <div>
+                    <h2 class="panel-title">Entrar por convite</h2>
+                    <p class="panel-subtitle">Recebeu um código? Entre no orçamento conjunto em poucos segundos.</p>
+                </div>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="acao" value="entrar_orcamento">
+                {% for field in form_convite %}
+                    <div class="mb-3">
+                        <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-premium-outline w-100">
+                    <i class="fa-solid fa-right-to-bracket me-2"></i>
+                    Entrar no orçamento
+                </button>
+            </form>
+        </section>
+    </div>
+
+    {% if orcamentos %}
+        <section class="card-modern card-body-modern mb-4">
+            <div class="panel-header mb-4">
+                <div>
+                    <h2 class="panel-title">Meus orçamentos compartilhados</h2>
+                    <p class="panel-subtitle">Escolha qual orçamento deseja acompanhar no mês selecionado.</p>
+                </div>
+            </div>
+            <div class="family-tabs">
+                {% for orcamento in orcamentos %}
+                    <a
+                        href="{% url 'modo_familia' %}?grupo={{ orcamento.id }}&mes={{ mes_filtro }}"
+                        class="family-tab {% if orcamento_selecionado and orcamento.id == orcamento_selecionado.id %}active{% endif %}"
+                    >
+                        <i class="fa-solid {% if orcamento.tipo == 'CASAL' %}fa-heart{% else %}fa-people-group{% endif %}"></i>
+                        <span>{{ orcamento.nome }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
+    {% if orcamento_selecionado and resumo %}
+        <section class="card-modern card-body-modern family-code-card mb-4">
+            <div>
+                <span class="eyebrow">Código de convite</span>
+                <h2>{{ orcamento_selecionado.codigo_convite }}</h2>
+                <p>Compartilhe esse código com a pessoa que vai participar do orçamento.</p>
+            </div>
+            <span class="status-pill status-paid">
+                {{ orcamento_selecionado.get_tipo_display }}
+            </span>
+        </section>
+
+        <div class="dashboard-grid dashboard-metrics mb-4">
+            <article class="metric-card card-modern">
+                <p class="metric-label">Saldo conjunto</p>
+                <h2 class="metric-value">R$ {{ resumo.saldo_conjunto }}</h2>
+                <span class="metric-trend {% if resumo.saldo_conjunto >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    <i class="fa-solid fa-people-arrows"></i>
+                    Receitas menos despesas conjuntas
+                </span>
+            </article>
+            <article class="metric-card card-modern">
+                <p class="metric-label">Despesas conjuntas</p>
+                <h2 class="metric-value">R$ {{ resumo.total_despesas_conjuntas }}</h2>
+                <span class="metric-trend text-danger">
+                    <i class="fa-solid fa-arrow-trend-down"></i>
+                    Gastos compartilhados
+                </span>
+            </article>
+            <article class="metric-card card-modern">
+                <p class="metric-label">Meu saldo individual</p>
+                <h2 class="metric-value">R$ {{ resumo.saldo_individual }}</h2>
+                <span class="metric-trend {% if resumo.saldo_individual >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    <i class="fa-solid fa-user"></i>
+                    Apenas seus lançamentos individuais
+                </span>
+            </article>
+            <article class="metric-card card-modern">
+                <p class="metric-label">Participantes</p>
+                <h2 class="metric-value">{{ resumo.participantes|length }}</h2>
+                <span class="metric-trend text-info">
+                    <i class="fa-solid fa-users"></i>
+                    Pessoas no orçamento
+                </span>
+            </article>
+        </div>
+
+        <div class="dashboard-layout mb-4">
+            <section class="card-modern card-body-modern">
+                <div class="panel-header mb-4">
+                    <div>
+                        <h2 class="panel-title">Contas conjuntas recentes</h2>
+                        <p class="panel-subtitle">Lançamentos marcados como conjuntos por qualquer participante.</p>
+                    </div>
+                    <a href="{% url 'criar_lancamento' %}" class="btn btn-panel">Novo lançamento</a>
+                </div>
+                <div class="transactions-list">
+                    {% for lancamento in resumo.lancamentos_conjuntos %}
+                        <article class="transaction-item family-transaction">
+                            <div class="transaction-icon {% if lancamento.tipo == 'RECEITA' %}transaction-icon-success{% else %}transaction-icon-danger{% endif %}">
+                                <i class="fa-solid {% if lancamento.tipo == 'RECEITA' %}fa-arrow-down{% else %}fa-arrow-up{% endif %}"></i>
+                            </div>
+                            <div class="transaction-main">
+                                <h3>{{ lancamento.descricao_completa }}</h3>
+                                <p>{{ lancamento.categoria.nome }} • {{ lancamento.usuario.first_name|default:lancamento.usuario.username }}</p>
+                            </div>
+                            <div class="transaction-meta">
+                                <strong class="{% if lancamento.tipo == 'RECEITA' %}text-success{% else %}text-light{% endif %}">
+                                    {% if lancamento.tipo == "RECEITA" %}+{% else %}-{% endif %} R$ {{ lancamento.valor }}
+                                </strong>
+                                <span>{{ lancamento.data_competencia|date:"d/m" }}</span>
+                            </div>
+                        </article>
+                    {% empty %}
+                        <div class="empty-state-inline">Nenhuma conta conjunta cadastrada neste mês.</div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="card-modern card-body-modern">
+                <div class="panel-header mb-4">
+                    <div>
+                        <h2 class="panel-title">Divisão por participante</h2>
+                        <p class="panel-subtitle">Quem registrou entradas e saídas conjuntas no período.</p>
+                    </div>
+                </div>
+                <div class="family-member-list">
+                    {% for item in resumo.resumo_participantes %}
+                        <article class="family-member-card">
+                            <div class="avatar">{{ item.membro.usuario.first_name|default:item.membro.usuario.username|slice:":2"|upper }}</div>
+                            <div>
+                                <h3>{{ item.membro.usuario.first_name|default:item.membro.usuario.username }}</h3>
+                                <p>{{ item.membro.get_papel_display }} • {{ item.quantidade }} lançamento(s)</p>
+                            </div>
+                            <strong class="{% if item.saldo >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                R$ {{ item.saldo }}
+                            </strong>
+                        </article>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+
+        <div class="dashboard-layout">
+            <section class="card-modern card-body-modern">
+                <div class="panel-header mb-4">
+                    <div>
+                        <h2 class="panel-title">Categorias conjuntas</h2>
+                        <p class="panel-subtitle">Onde o orçamento compartilhado mais pesou.</p>
+                    </div>
+                </div>
+                <div class="goal-list">
+                    {% for categoria in resumo.categorias_conjuntas %}
+                        <article class="goal-item">
+                            <div class="goal-item-top">
+                                <div>
+                                    <h3>{{ categoria.categoria__nome }}</h3>
+                                    <p>{{ categoria.quantidade }} lançamento(s)</p>
+                                </div>
+                                <strong>R$ {{ categoria.total }}</strong>
+                            </div>
+                        </article>
+                    {% empty %}
+                        <div class="empty-state-inline">Sem despesas conjuntas por categoria neste mês.</div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="card-modern card-body-modern">
+                <div class="panel-header mb-4">
+                    <div>
+                        <h2 class="panel-title">Minhas contas individuais</h2>
+                        <p class="panel-subtitle">Lançamentos pessoais continuam separados do orçamento conjunto.</p>
+                    </div>
+                </div>
+                <div class="transactions-list">
+                    {% for lancamento in resumo.lancamentos_individuais %}
+                        <article class="transaction-item">
+                            <div class="transaction-icon {% if lancamento.tipo == 'RECEITA' %}transaction-icon-success{% else %}transaction-icon-danger{% endif %}">
+                                <i class="fa-solid {% if lancamento.tipo == 'RECEITA' %}fa-arrow-down{% else %}fa-arrow-up{% endif %}"></i>
+                            </div>
+                            <div class="transaction-main">
+                                <h3>{{ lancamento.descricao_completa }}</h3>
+                                <p>{{ lancamento.categoria.nome }} • {{ lancamento.get_status_display }}</p>
+                            </div>
+                            <div class="transaction-meta">
+                                <strong class="{% if lancamento.tipo == 'RECEITA' %}text-success{% else %}text-light{% endif %}">
+                                    {% if lancamento.tipo == "RECEITA" %}+{% else %}-{% endif %} R$ {{ lancamento.valor }}
+                                </strong>
+                                <span>{{ lancamento.data_competencia|date:"d/m" }}</span>
+                            </div>
+                        </article>
+                    {% empty %}
+                        <div class="empty-state-inline">Nenhuma conta individual cadastrada neste mês.</div>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+    {% else %}
+        <section class="card-modern card-body-modern">
+            <div class="decision-locked family-locked">
+                <div class="decision-lock-icon">
+                    <i class="fa-solid fa-handshake"></i>
+                </div>
+                <h3>Crie ou entre em um orçamento</h3>
+                <p>Depois disso, ao criar um lançamento, você poderá escolher entre conta individual ou conta conjunta.</p>
+            </div>
+        </section>
+    {% endif %}
+{% endif %}
+{% endblock %}

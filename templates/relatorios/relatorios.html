@@ -19,6 +19,86 @@
     </form>
 </section>
 
+<section class="card-modern card-body-modern report-ai-panel mb-4">
+    <div class="panel-header mb-4">
+        <div>
+            <h2 class="panel-title">Diagnóstico financeiro por IA</h2>
+            <p class="panel-subtitle">A IA explica o que está acontecendo no mês, aponta riscos e sugere ações práticas.</p>
+        </div>
+        {% if ia_liberada %}
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="acao" value="gerar_diagnostico_ia">
+                <button type="submit" class="btn btn-premium">
+                    <i class="fa-solid fa-wand-magic-sparkles me-2"></i>
+                    Gerar diagnóstico
+                </button>
+            </form>
+        {% else %}
+            <form method="post" action="{% url 'checkout_premium' %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-premium-outline">
+                    <i class="fa-solid fa-lock me-2"></i>
+                    Liberar no Premium
+                </button>
+            </form>
+        {% endif %}
+    </div>
+
+    {% if ia_liberada and diagnostico_ia %}
+        <div class="ai-highlight-card mb-4">
+            <div class="ai-highlight-header">
+                <span class="status-pill ai-health-pill ai-health-{{ diagnostico_ia.saude_financeira|lower }}">
+                    Saúde {{ diagnostico_ia.get_saude_financeira_display }}
+                </span>
+                <span class="panel-chip">{{ diagnostico_ia.periodo_inicio|date:"m/Y" }}</span>
+            </div>
+            <p class="ai-highlight-summary">{{ diagnostico_ia.resumo_executivo }}</p>
+        </div>
+
+        <div class="report-ai-grid">
+            <article>
+                <h3>Sinais positivos</h3>
+                <ul class="ai-bullet-list">
+                    {% for item in diagnostico_ia.sinais_positivos %}
+                        <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </article>
+            <article>
+                <h3>Pontos de atenção</h3>
+                <ul class="ai-bullet-list">
+                    {% for item in diagnostico_ia.alertas_prioritarios %}
+                        <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </article>
+            <article>
+                <h3>Oportunidades</h3>
+                <ul class="ai-bullet-list">
+                    {% for item in diagnostico_ia.oportunidades %}
+                        <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </article>
+        </div>
+    {% elif ia_liberada %}
+        <div class="empty-state-inline">
+            Nenhum diagnóstico IA foi gerado para este mês ainda.
+        </div>
+    {% else %}
+        <div class="report-ai-locked">
+            <div class="decision-lock-icon">
+                <i class="fa-solid fa-robot"></i>
+            </div>
+            <div>
+                <strong>Diagnóstico inteligente disponível no Premium</strong>
+                <p>Além dos gráficos, o FinanPy explica padrões como alta em delivery, risco de saldo negativo e despesas que podem afetar suas metas.</p>
+            </div>
+        </div>
+    {% endif %}
+</section>
+
 <div class="row g-3">
     <div class="col-lg-6">
         <div class="card-modern h-100">

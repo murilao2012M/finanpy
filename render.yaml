@@ -1,0 +1,48 @@
+databases:
+  - name: finanpy-db
+    databaseName: finanpy
+    user: finanpy
+    plan: free
+
+services:
+  - type: web
+    name: finanpy
+    runtime: python
+    plan: free
+    buildCommand: bash build.sh
+    preDeployCommand: python manage.py migrate
+    startCommand: gunicorn finanpy.wsgi:application
+    healthCheckPath: /healthz/
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: finanpy-db
+          property: connectionString
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_ENABLE_HTTPS
+        value: "True"
+      - key: DJANGO_LOG_LEVEL
+        value: INFO
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: FINANPY_SITE_URL
+        sync: false
+      - key: MERCADO_PAGO_PUBLIC_KEY
+        sync: false
+      - key: MERCADO_PAGO_ACCESS_TOKEN
+        sync: false
+      - key: MERCADO_PAGO_WEBHOOK_SECRET
+        sync: false
+      - key: MERCADO_PAGO_BASE_URL
+        value: https://api.mercadopago.com
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5-mini
+      - key: OPENAI_TIMEOUT_SECONDS
+        value: "60"

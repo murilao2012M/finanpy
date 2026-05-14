@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero-panel mb-4">
+    <div>
+        <span class="eyebrow">Minha conta</span>
+        <h1 class="page-title">Perfil</h1>
+        <p class="page-subtitle">Gerencie suas informações pessoais, foto, moeda principal e senha de acesso.</p>
+    </div>
+    <a href="{% url 'configuracoes' %}" class="btn btn-premium-outline">
+        <i class="fa-solid fa-gear me-2"></i>
+        Configurações
+    </a>
+</section>
+
+<section class="profile-hero card-modern mb-4">
+    <div class="profile-hero-main">
+        {% if configuracao_usuario.foto_perfil %}
+            <img src="{{ configuracao_usuario.foto_perfil.url }}" alt="Foto de {{ user.first_name|default:user.username }}" class="profile-avatar-large">
+        {% else %}
+            <div class="profile-avatar-large profile-avatar-placeholder">
+                {{ user.first_name|default:user.username|slice:":2"|upper }}
+            </div>
+        {% endif %}
+        <div>
+            <h2>{{ user.first_name|default:user.username }}</h2>
+            <p>{{ user.email|default:"E-mail não informado" }}</p>
+            <div class="profile-badges">
+                <span class="status-pill">{{ user.username }}</span>
+                <span class="status-pill">{{ configuracao_usuario.get_moeda_padrao_display }}</span>
+            </div>
+        </div>
+    </div>
+    <div class="profile-hero-meta">
+        <span>Conta criada no FinanPy</span>
+        <strong>{{ user.date_joined|date:"d/m/Y" }}</strong>
+    </div>
+</section>
+
+<div class="dashboard-layout">
+    <section class="card-modern card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Informações pessoais</h2>
+                <p class="panel-subtitle">Atualize o nome usado no painel, seu e-mail e seu nome de usuário.</p>
+            </div>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="row">
+                {% for field in perfil_form %}
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}
+                            <div class="text-danger small mt-1">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+            <button type="submit" name="salvar_perfil" class="btn btn-premium">
+                <i class="fa-regular fa-floppy-disk me-2"></i>
+                Salvar perfil
+            </button>
+        </form>
+    </section>
+
+    <section class="card-modern card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Foto e moeda</h2>
+                <p class="panel-subtitle">Personalize a aparência da conta e a moeda principal do sistema.</p>
+            </div>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="mb-4">
+            {% csrf_token %}
+            <label for="{{ foto_form.foto_perfil.id_for_label }}" class="field-label">{{ foto_form.foto_perfil.label }}</label>
+            {{ foto_form.foto_perfil }}
+            <div class="form-text register-help-text">Formatos aceitos: JPG, PNG ou WEBP. Tamanho máximo: 2 MB.</div>
+            {% for error in foto_form.foto_perfil.errors %}
+                <div class="text-danger small mt-1">{{ error }}</div>
+            {% endfor %}
+            <button type="submit" name="salvar_foto" class="btn btn-premium-outline mt-3">
+                <i class="fa-regular fa-image me-2"></i>
+                Trocar foto
+            </button>
+        </form>
+
+        <form method="post">
+            {% csrf_token %}
+            <label for="{{ moeda_form.moeda_padrao.id_for_label }}" class="field-label">{{ moeda_form.moeda_padrao.label }}</label>
+            {{ moeda_form.moeda_padrao }}
+            {% for error in moeda_form.moeda_padrao.errors %}
+                <div class="text-danger small mt-1">{{ error }}</div>
+            {% endfor %}
+            <button type="submit" name="salvar_moeda" class="btn btn-premium mt-3">
+                <i class="fa-solid fa-coins me-2"></i>
+                Salvar moeda
+            </button>
+        </form>
+    </section>
+</div>
+
+<section class="card-modern card-body-modern mt-4">
+    <div class="panel-header mb-4">
+        <div>
+            <h2 class="panel-title">Senha</h2>
+            <p class="panel-subtitle">Altere sua senha mantendo a sessão atual ativa com segurança.</p>
+        </div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="row">
+            {% for field in senha_form %}
+                <div class="col-md-4 mb-3">
+                    <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <div class="form-text register-help-text">{{ field.help_text|safe }}</div>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+        <button type="submit" name="alterar_senha" class="btn btn-premium-danger">
+            <i class="fa-solid fa-key me-2"></i>
+            Alterar senha
+        </button>
+    </form>
+</section>
+{% endblock %}

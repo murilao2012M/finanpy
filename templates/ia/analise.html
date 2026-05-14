@@ -11,7 +11,10 @@
         {% if ia_liberada %}
             <span class="status-pill status-paid"><i class="fa-solid fa-crown me-2"></i>IA liberada</span>
         {% else %}
-            <a href="{% url 'checkout_premium' %}" class="btn btn-premium">Ativar Premium</a>
+            <form method="post" action="{% url 'checkout_premium' %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-premium">Ativar Premium</button>
+            </form>
         {% endif %}
     </div>
 </section>
@@ -93,7 +96,10 @@
                     <strong>Este recurso faz parte do Premium</strong>
                     <p>Com o plano completo, o usuário recebe leitura mensal inteligente, riscos, oportunidades e ações priorizadas.</p>
                 </div>
-                <a href="{% url 'checkout_premium' %}" class="btn btn-premium w-100">Ir para o checkout Premium</a>
+                <form method="post" action="{% url 'checkout_premium' %}" class="w-100">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-premium w-100">Ir para o checkout Premium</button>
+                </form>
             </div>
         {% endif %}
     </section>

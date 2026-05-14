@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero-panel mb-4">
+    <div>
+        <span class="eyebrow">Controle emergencial</span>
+        <h1 class="page-title">Modo Anti-descontrole</h1>
+        <p class="page-subtitle">Ative um plano de contenção por 7, 15 ou 30 dias com limites por categoria e gasto diário recomendado.</p>
+    </div>
+    {% if contencao_liberada %}
+        <span class="status-pill status-paid">
+            <i class="fa-solid fa-crown me-2"></i>
+            Premium liberado
+        </span>
+    {% else %}
+        <form method="post" action="{% url 'checkout_premium' %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-premium">
+                <i class="fa-solid fa-lock-open me-2"></i>
+                Liberar no Premium
+            </button>
+        </form>
+    {% endif %}
+</section>
+
+{% if not contencao_liberada %}
+    <section class="card-modern card-body-modern">
+        <div class="decision-locked">
+            <div class="decision-lock-icon">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h3>Recurso exclusivo do Premium</h3>
+            <p>O Modo Anti-descontrole cria um plano temporário de contenção, divide limites entre categorias e mostra quanto ainda pode gastar por dia.</p>
+            <form method="post" action="{% url 'checkout_premium' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-premium">Assinar Premium por R$ 10,50/mês</button>
+            </form>
+        </div>
+    </section>
+{% elif plano_ativo %}
+    <div class="dashboard-grid dashboard-metrics mb-4">
+        <article class="metric-card card-modern">
+            <p class="metric-label">Orçamento restante</p>
+            <h2 class="metric-value">R$ {{ resumo.restante_total|floatformat:2 }}</h2>
+            <span class="metric-trend text-success">
+                <i class="fa-solid fa-wallet"></i>
+                De R$ {{ plano_ativo.orcamento_total }}
+            </span>
+        </article>
+        <article class="metric-card card-modern">
+            <p class="metric-label">Disponível por dia</p>
+            <h2 class="metric-value">R$ {{ resumo.gasto_por_dia|floatformat:2 }}</h2>
+            <span class="metric-trend text-info">
+                <i class="fa-regular fa-calendar"></i>
+                {{ resumo.dias_restantes }} dia(s) restante(s)
+            </span>
+        </article>
+        <article class="metric-card card-modern">
+            <p class="metric-label">Gasto no plano</p>
+            <h2 class="metric-value">R$ {{ resumo.gasto_total|floatformat:2 }}</h2>
+            <span class="metric-trend text-warning">
+                <i class="fa-solid fa-arrow-trend-up"></i>
+                Categorias monitoradas
+            </span>
+        </article>
+        <article class="metric-card card-modern">
+            <p class="metric-label">Prazo</p>
+            <h2 class="metric-value">{{ plano_ativo.duracao_dias }} dias</h2>
+            <span class="metric-trend text-secondary">
+                <i class="fa-solid fa-hourglass-half"></i>
+                Até {{ plano_ativo.data_fim|date:"d/m/Y" }}
+            </span>
+        </article>
+    </div>
+
+    <div class="dashboard-layout">
+        <section class="card-modern card-body-modern">
+            <div class="panel-header mb-4">
+                <div>
+                    <h2 class="panel-title">{{ plano_ativo.titulo }}</h2>
+                    <p class="panel-subtitle">Acompanhamento dos limites por categoria durante o período de contenção.</p>
+                </div>
+                <form method="post" action="{% url 'cancelar_modo_contencao' plano_ativo.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-premium-danger">Cancelar plano</button>
+                </form>
+            </div>
+
+            <div class="goal-list">
+                {% for categoria in resumo.categorias %}
+                    <article class="containment-category">
+                        <div class="goal-item-top">
+                            <div>
+                                <h3>{{ categoria.nome }}</h3>
+                                <p>R$ {{ categoria.gasto|floatformat:2 }} gastos de R$ {{ categoria.limite|floatformat:2 }}</p>
+                            </div>
+                            <span class="status-pill {% if categoria.nivel == 'CRITICO' %}status-overdue{% elif categoria.nivel == 'ATENCAO' %}status-pending{% else %}status-paid{% endif %}">
+                                {{ categoria.status_label }}
+                            </span>
+                        </div>
+                        <div class="goal-progress">
+                            <div class="goal-progress-bar containment-progress-{{ categoria.nivel|lower }}" style="width: {{ categoria.percentual }}%;"></div>
+                        </div>
+                        <div class="goal-item-footer">
+                            <span>{{ categoria.percentual }}% usado</span>
+                            <span>Restam R$ {{ categoria.restante|floatformat:2 }}</span>
+                        </div>
+                    </article>
+                {% empty %}
+                    <div class="empty-state-inline">Nenhuma categoria foi adicionada ao plano.</div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="card-modern card-body-modern">
+            <div class="panel-header mb-4">
+                <div>
+                    <h2 class="panel-title">Alertas do plano</h2>
+                    <p class="panel-subtitle">Sinais de risco gerados automaticamente a partir dos seus lançamentos.</p>
+                </div>
+            </div>
+
+            <div class="containment-alert-list">
+                {% for alerta in resumo.alertas %}
+                    <div class="custom-alert custom-alert-danger">
+                        <span>{{ alerta }}</span>
+                    </div>
+                {% empty %}
+                    <div class="custom-alert custom-alert-success">
+                        <span>Nenhum gasto perigoso detectado até agora. Continue seguindo o limite diário.</span>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="containment-daily-tip">
+                <span>Limite recomendado para hoje</span>
+                <strong>R$ {{ resumo.gasto_por_dia|floatformat:2 }}</strong>
+            </div>
+        </section>
+    </div>
+{% else %}
+    <div class="dashboard-layout">
+        <section class="card-modern card-body-modern">
+            <div class="panel-header mb-4">
+                <div>
+                    <h2 class="panel-title">Ativar plano de contenção</h2>
+                    <p class="panel-subtitle">Escolha o prazo, orçamento total e categorias que serão monitoradas.</p>
+                </div>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.titulo.id_for_label }}" class="field-label">{{ form.titulo.label }}</label>
+                        {{ form.titulo }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ form.duracao_dias.id_for_label }}" class="field-label">{{ form.duracao_dias.label }}</label>
+                        {{ form.duracao_dias }}
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label for="{{ form.orcamento_total.id_for_label }}" class="field-label">{{ form.orcamento_total.label }}</label>
+                        {{ form.orcamento_total }}
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <span class="field-label">{{ form.categorias.label }}</span>
+                    <div class="category-check-shell">
+                        {{ form.categorias }}
+                    </div>
+                    {% for error in form.categorias.errors %}
+                        <div class="text-danger small mt-2">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <div class="text-danger small mb-2">{{ error }}</div>
+                    {% endfor %}
+                {% endfor %}
+
+                <button type="submit" class="btn btn-premium w-100">
+                    <i class="fa-solid fa-shield-halved me-2"></i>
+                    Ativar modo anti-descontrole
+                </button>
+            </form>
+        </section>
+
+        <section class="card-modern card-body-modern containment-guide">
+            <div class="panel-header mb-4">
+                <div>
+                    <h2 class="panel-title">Como o plano funciona</h2>
+                    <p class="panel-subtitle">O FinanPy acompanha os lançamentos das categorias selecionadas até o fim do prazo.</p>
+                </div>
+            </div>
+            <div class="goal-list">
+                <article class="goal-item">
+                    <h3>1. Escolha o prazo</h3>
+                    <p>Use 7 dias para emergência, 15 dias para ajuste curto ou 30 dias para reorganizar o mês.</p>
+                </article>
+                <article class="goal-item">
+                    <h3>2. Defina o orçamento</h3>
+                    <p>O orçamento será dividido entre as categorias monitoradas.</p>
+                </article>
+                <article class="goal-item">
+                    <h3>3. Acompanhe os alertas</h3>
+                    <p>Quando uma categoria passa de 80% do limite, o painel chama sua atenção.</p>
+                </article>
+            </div>
+        </section>
+    </div>
+{% endif %}
+{% endblock %}

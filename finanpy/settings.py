@@ -8,8 +8,12 @@ Este arquivo concentra as definicoes que o Django usa para:
 - como o login e o logout devem funcionar.
 """
 
+import importlib.util
 import os
 from pathlib import Path
+from urllib.parse import unquote, urlparse
+
+from django.core.exceptions import ImproperlyConfigured
 
 
 # BASE_DIR aponta para a pasta raiz do projeto e facilita montar caminhos absolutos.
@@ -44,18 +48,74 @@ def env_bool(nome_variavel, padrao=False):
         return padrao
     return valor.strip().lower() in {"1", "true", "yes", "on"}
 
-# Em ambiente de estudos podemos manter uma chave fixa.
-# Em producao, o ideal seria usar variavel de ambiente.
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-finanpy-projeto-didatico")
+
+def env_list(nome_variavel, padrao=""):
+    """Converte variaveis separadas por virgula em lista limpa."""
+    valor = os.getenv(nome_variavel, padrao)
+    return [item.strip() for item in valor.split(",") if item.strip()]
+
+
+def pacote_instalado(nome_pacote):
+    """Verifica se uma dependencia opcional esta disponivel no ambiente."""
+    return importlib.util.find_spec(nome_pacote) is not None
+
+
+def extrair_host_de_url(url):
+    """Extrai o host de uma URL completa para reaproveitar em ALLOWED_HOSTS."""
+    if not url:
+        return ""
+
+    return urlparse(url).hostname or ""
+
+
+def database_config_from_url(database_url):
+    """Monta a configuracao do banco a partir de DATABASE_URL."""
+    url = urlparse(database_url)
+
+    if url.scheme in {"postgres", "postgresql"}:
+        return {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": unquote(url.path.lstrip("/")),
+            "USER": unquote(url.username or ""),
+            "PASSWORD": unquote(url.password or ""),
+            "HOST": url.hostname or "",
+            "PORT": str(url.port or ""),
+        }
+
+    if url.scheme == "sqlite":
+        caminho = unquote(url.path or "")
+        return {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": caminho or BASE_DIR / "db.sqlite3",
+        }
+
+    raise ImproperlyConfigured("DATABASE_URL precisa usar postgres://, postgresql:// ou sqlite://.")
+
 
 # DEBUG=True deixa mensagens de erro mais detalhadas.
 # Isso ajuda no aprendizado, mas nao deve ser usado em producao.
 DEBUG = env_bool("DJANGO_DEBUG", True)
 
+# Em desenvolvimento usamos uma chave didatica.
+# Em producao, a chave precisa vir obrigatoriamente do ambiente.
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = "django-insecure-finanpy-projeto-didatico"
+    else:
+        raise ImproperlyConfigured("Defina DJANGO_SECRET_KEY em producao.")
+
 # Durante o desenvolvimento local, aceitamos hosts comuns.
 # Em producao, a variavel DJANGO_ALLOWED_HOSTS deve ser definida.
-hosts_env = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost")
-ALLOWED_HOSTS = [host.strip() for host in hosts_env.split(",") if host.strip()]
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost")
+
+render_hostname = os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
+if render_hostname and render_hostname not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(render_hostname)
+
+site_hostname = extrair_host_de_url(os.getenv("FINANPY_SITE_URL", ""))
+if site_hostname and site_hostname not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(site_hostname)
 
 
 # Apps internos do Django e nosso app principal.
@@ -80,6 +140,9 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+if pacote_instalado("whitenoise"):
+    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
 
 # Arquivo principal de rotas do projeto.
 ROOT_URLCONF = "finanpy.urls"
@@ -107,9 +170,14 @@ TEMPLATES = [
 WSGI_APPLICATION = "finanpy.wsgi.application"
 
 
-# Banco de dados SQLite, simples e ideal para iniciar o projeto.
+# Banco de dados.
+# Localmente, o FinanPy usa SQLite.
+# Em producao, basta definir DATABASE_URL com a URL interna do PostgreSQL.
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 DATABASES = {
-    "default": {
+    "default": database_config_from_url(DATABASE_URL)
+    if DATABASE_URL
+    else {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
     }
@@ -133,8 +201,23 @@ USE_TZ = True
 
 
 # Arquivos estaticos, como CSS proprio do projeto.
-STATIC_URL = "static/"
+STATIC_URL = os.getenv("DJANGO_STATIC_URL", "/static/")
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+if pacote_instalado("whitenoise"):
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+
+# Arquivos enviados pelo usuario, como a foto do perfil.
+MEDIA_URL = os.getenv("DJANGO_MEDIA_URL", "/media/")
+MEDIA_ROOT = Path(os.getenv("DJANGO_MEDIA_ROOT", BASE_DIR / "media"))
 
 # Chave primaria padrao usando BigAutoField.
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -146,8 +229,8 @@ LOGIN_REDIRECT_URL = "dashboard"
 # Quando uma view protegida exigir autenticacao, o Django vai primeiro ao cadastro.
 LOGIN_URL = "registrar_usuario"
 
-# Quando fizer logout, voltamos para o fluxo inicial de cadastro.
-LOGOUT_REDIRECT_URL = "registrar_usuario"
+# Quando fizer logout, voltamos para a tela de login.
+LOGOUT_REDIRECT_URL = "login"
 
 # Regras simples de seguranca para o fluxo autenticado.
 SESSION_COOKIE_HTTPONLY = True
@@ -186,10 +269,11 @@ else:
 
 
 # Hosts confiaveis para formularios e CSRF em producao HTTPS.
-csrf_origins_env = os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "")
-CSRF_TRUSTED_ORIGINS = [
-    origem.strip() for origem in csrf_origins_env.split(",") if origem.strip()
-]
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
+
+site_url = os.getenv("FINANPY_SITE_URL", "")
+if site_url.startswith("https://") and site_url not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(site_url)
 
 
 # Credenciais da cobranca recorrente com Mercado Pago.
@@ -201,3 +285,35 @@ MERCADO_PAGO_WEBHOOK_SECRET = os.getenv("MERCADO_PAGO_WEBHOOK_SECRET", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
 OPENAI_TIMEOUT_SECONDS = int(os.getenv("OPENAI_TIMEOUT_SECONDS", "60"))
+
+
+# Logs estruturados para acompanhar erros reais no terminal local e no Render.
+LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", "INFO")
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {
+            "format": "[{levelname}] {asctime} {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": LOG_LEVEL,
+            "propagate": True,
+        },
+        "financeiro": {
+            "handlers": ["console"],
+            "level": LOG_LEVEL,
+            "propagate": False,
+        },
+    },
+}

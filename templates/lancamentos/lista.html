@@ -93,6 +93,11 @@
                                 {% if lancamento.cartao %}
                                     <div class="table-subtitle">Cartão: {{ lancamento.cartao.nome }}</div>
                                 {% endif %}
+                                {% if lancamento.orcamento_compartilhado %}
+                                    <div class="table-subtitle">
+                                        Conjunto: {{ lancamento.orcamento_compartilhado.nome }}
+                                    </div>
+                                {% endif %}
                             </td>
                             <td>{{ lancamento.get_tipo_display }}</td>
                             <td>{{ lancamento.categoria.nome }}</td>

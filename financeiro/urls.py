@@ -7,6 +7,12 @@ from . import views
 
 urlpatterns = [
     path("painel/", views.dashboard, name="dashboard"),
+    path("perfil/", views.perfil_usuario, name="perfil_usuario"),
+    path("simulador/", views.simulador_decisoes, name="simulador_decisoes"),
+    path("anti-descontrole/", views.modo_contencao, name="modo_contencao"),
+    path("anti-descontrole/<int:pk>/cancelar/", views.cancelar_modo_contencao, name="cancelar_modo_contencao"),
+    path("familia/", views.modo_familia, name="modo_familia"),
+    path("viloes-financeiros/", views.ranking_viloes, name="ranking_viloes"),
     path("categorias/", views.lista_categorias, name="lista_categorias"),
     path("categorias/nova/", views.criar_categoria, name="criar_categoria"),
     path("categorias/<int:pk>/editar/", views.editar_categoria, name="editar_categoria"),

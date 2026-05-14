@@ -56,6 +56,7 @@ class MercadoPagoClient:
                 "currency_id": "BRL",
             },
             "back_url": f"{self.site_url}/assinatura/retorno/",
+            "notification_url": f"{self.site_url}/webhooks/mercado-pago/?source_news=webhooks",
             "status": "pending",
         }
 

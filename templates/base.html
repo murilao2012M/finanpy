@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body data-theme="dark">
     {% if user.is_authenticated %}
         <div class="app-shell">
             <aside class="sidebar" id="sidebar">
@@ -55,6 +55,22 @@
                         <i class="fa-solid fa-robot"></i>
                         <span>Análise IA</span>
                     </a>
+                    <a href="{% url 'simulador_decisoes' %}" class="sidebar-link {% if '/simulador/' in request.path %}active{% endif %}">
+                        <i class="fa-solid fa-scale-balanced"></i>
+                        <span>Simulador</span>
+                    </a>
+                    <a href="{% url 'modo_contencao' %}" class="sidebar-link {% if '/anti-descontrole/' in request.path %}active{% endif %}">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <span>Anti-descontrole</span>
+                    </a>
+                    <a href="{% url 'ranking_viloes' %}" class="sidebar-link {% if '/viloes-financeiros/' in request.path %}active{% endif %}">
+                        <i class="fa-solid fa-mask"></i>
+                        <span>Vilões</span>
+                    </a>
+                    <a href="{% url 'modo_familia' %}" class="sidebar-link {% if '/familia/' in request.path %}active{% endif %}">
+                        <i class="fa-solid fa-people-roof"></i>
+                        <span>Casal/Família</span>
+                    </a>
                     <a href="{% url 'lista_metas' %}" class="sidebar-link {% if '/metas/' in request.path %}active{% endif %}">
                         <i class="fa-solid fa-bullseye"></i>
                         <span>Metas</span>
@@ -78,7 +94,6 @@
                         {% csrf_token %}
                         <button type="submit" class="btn btn-premium w-100">Sair da conta</button>
                     </form>
-                    <a href="{% url 'logout' %}" class="btn btn-link-logout w-100 mt-2">Se não sair, clique aqui</a>
                 </div>
             </aside>
 
@@ -99,18 +114,53 @@
                                 {{ plano_usuario_atual.get_nome_plano_display }}
                             </div>
                         {% endif %}
-                        <button class="icon-button" type="button" aria-label="Tema">
-                            <i class="fa-regular fa-moon"></i>
+                        <button class="icon-button" type="button" id="themeToggle" aria-label="Alternar tema">
+                            <i class="fa-regular fa-moon" id="themeToggleIcon"></i>
                         </button>
                         <button class="icon-button" type="button" aria-label="Notificações">
                             <i class="fa-regular fa-bell"></i>
                             <span class="notification-dot"></span>
                         </button>
-                        <div class="user-chip">
-                            <div class="avatar">{{ user.first_name|default:user.username|slice:":2"|upper }}</div>
-                            <div class="user-chip-text">
-                                <strong>{{ user.first_name|default:user.username }}</strong>
-                                <span>Usuário</span>
+                        <div class="dropdown user-menu">
+                            <button class="user-chip user-chip-button" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                {% if configuracao_usuario_atual and configuracao_usuario_atual.foto_perfil %}
+                                    <img src="{{ configuracao_usuario_atual.foto_perfil.url }}" alt="Foto de {{ user.first_name|default:user.username }}" class="avatar avatar-image">
+                                {% else %}
+                                    <span class="avatar">{{ user.first_name|default:user.username|slice:":2"|upper }}</span>
+                                {% endif %}
+                                <span class="user-chip-text">
+                                    <strong>{{ user.first_name|default:user.username }}</strong>
+                                    <span>Usuário</span>
+                                </span>
+                                <i class="fa-solid fa-chevron-down user-menu-chevron"></i>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-end user-dropdown-menu">
+                                <div class="user-dropdown-header">
+                                    {% if configuracao_usuario_atual and configuracao_usuario_atual.foto_perfil %}
+                                        <img src="{{ configuracao_usuario_atual.foto_perfil.url }}" alt="Foto de {{ user.first_name|default:user.username }}" class="avatar avatar-image">
+                                    {% else %}
+                                        <span class="avatar">{{ user.first_name|default:user.username|slice:":2"|upper }}</span>
+                                    {% endif %}
+                                    <div>
+                                        <strong>{{ user.first_name|default:user.username }}</strong>
+                                        <span>{{ user.email|default:"E-mail não informado" }}</span>
+                                    </div>
+                                </div>
+                                <a class="user-dropdown-item" href="{% url 'perfil_usuario' %}">
+                                    <i class="fa-regular fa-user"></i>
+                                    <span>Perfil</span>
+                                </a>
+                                <a class="user-dropdown-item" href="{% url 'configuracoes' %}">
+                                    <i class="fa-solid fa-gear"></i>
+                                    <span>Configurações</span>
+                                </a>
+                                <form method="post" action="{% url 'logout' %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="user-dropdown-item user-dropdown-danger">
+                                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                                        <span>Logout</span>
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     </div>
@@ -153,6 +203,22 @@
         const sidebar = document.getElementById("sidebar");
         const mobileMenuButton = document.getElementById("mobileMenuButton");
         const sidebarCollapse = document.getElementById("sidebarCollapse");
+        const themeToggle = document.getElementById("themeToggle");
+        const themeToggleIcon = document.getElementById("themeToggleIcon");
+        const body = document.body;
+
+        function applyTheme(theme) {
+            body.setAttribute("data-theme", theme);
+
+            if (themeToggleIcon) {
+                themeToggleIcon.className = theme === "light"
+                    ? "fa-regular fa-sun"
+                    : "fa-regular fa-moon";
+            }
+        }
+
+        const savedTheme = localStorage.getItem("finanpy-theme");
+        applyTheme(savedTheme === "light" ? "light" : "dark");
 
         if (mobileMenuButton && sidebar) {
             mobileMenuButton.addEventListener("click", function () {
@@ -163,6 +229,14 @@
         if (sidebarCollapse && sidebar) {
             sidebarCollapse.addEventListener("click", function () {
                 sidebar.classList.toggle("sidebar-collapsed");
+            });
+        }
+
+        if (themeToggle) {
+            themeToggle.addEventListener("click", function () {
+                const nextTheme = body.getAttribute("data-theme") === "light" ? "dark" : "light";
+                localStorage.setItem("finanpy-theme", nextTheme);
+                applyTheme(nextTheme);
             });
         }
 

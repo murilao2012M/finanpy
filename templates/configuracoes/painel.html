@@ -77,11 +77,17 @@
             </form>
             <a href="{% url 'analise_ia' %}" class="btn btn-premium-outline">Abrir análise IA</a>
         {% else %}
-            <a href="{% url 'checkout_premium' %}" class="btn btn-premium">Ir para checkout premium de R$ 10,50/mes</a>
+            <form method="post" action="{% url 'checkout_premium' %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-premium">Ir para checkout premium de R$ 10,50/mês</button>
+            </form>
         {% endif %}
 
         {% if plano_usuario.mercado_pago_preapproval_id %}
-            <a href="{% url 'sincronizar_assinatura_premium' %}" class="btn btn-premium-outline">Sincronizar status no Mercado Pago</a>
+            <form method="post" action="{% url 'sincronizar_assinatura_premium' %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-premium-outline">Sincronizar status no Mercado Pago</button>
+            </form>
         {% endif %}
     </div>
 
@@ -108,13 +114,47 @@
 <section class="card-modern card-body-modern mb-4">
     <div class="panel-header mb-4">
         <div>
+            <h2 class="panel-title">Histórico da assinatura</h2>
+            <p class="panel-subtitle">Eventos recentes de checkout, sincronização, webhook e bloqueios de recursos premium.</p>
+        </div>
+    </div>
+
+    <div class="goal-list">
+        {% for evento in eventos_assinatura %}
+            <article class="goal-item">
+                <div class="goal-item-top">
+                    <div>
+                        <h3>{{ evento.get_tipo_display }}</h3>
+                        <p>{{ evento.mensagem|default:"Evento registrado pelo backend do FinanPy." }}</p>
+                    </div>
+                    <span class="status-pill {% if evento.tipo == 'ERRO' %}status-overdue{% elif evento.tipo == 'PREMIUM_ATIVADO' %}status-paid{% else %}status-pending{% endif %}">
+                        {{ evento.criado_em|date:"d/m/Y H:i" }}
+                    </span>
+                </div>
+                <div class="goal-item-footer">
+                    <span>{{ evento.get_origem_display }}</span>
+                    <span>{{ evento.status_gateway|default:"Sem status do gateway" }}</span>
+                </div>
+            </article>
+        {% empty %}
+            <div class="empty-state-inline">Nenhum evento de assinatura foi registrado até agora.</div>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="card-modern card-body-modern mb-4">
+    <div class="panel-header mb-4">
+        <div>
             <h2 class="panel-title">Analise financeira com IA</h2>
             <p class="panel-subtitle">O modulo premium do FinanPy interpreta seu mês, destaca riscos e cria um plano de ação objetivo.</p>
         </div>
         {% if plano_usuario.ia_habilitada %}
             <a href="{% url 'analise_ia' %}" class="btn btn-premium">Gerar analise</a>
         {% else %}
-            <a href="{% url 'checkout_premium' %}" class="btn btn-premium-outline">Liberar IA</a>
+            <form method="post" action="{% url 'checkout_premium' %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-premium-outline">Liberar IA</button>
+            </form>
         {% endif %}
     </div>
 

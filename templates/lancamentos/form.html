@@ -17,11 +17,17 @@
 
                 <form method="post">
                     {% csrf_token %}
+                    {% for hidden_field in form.hidden_fields %}
+                        {{ hidden_field }}
+                    {% endfor %}
                     <div class="row">
-                        {% for field in form %}
+                        {% for field in form.visible_fields %}
                             <div class="{% if field.name == 'observacao' %}col-12{% else %}col-md-6{% endif %} mb-3">
                                 <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
                                 {{ field }}
+                                {% if field.help_text %}
+                                    <div class="form-text register-help-text">{{ field.help_text }}</div>
+                                {% endif %}
                                 {% for error in field.errors %}
                                     <div class="text-danger small">{{ error }}</div>
                                 {% endfor %}

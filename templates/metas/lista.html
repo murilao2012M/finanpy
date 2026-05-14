@@ -51,6 +51,7 @@
 
         <div class="goal-list goal-list-page">
             {% for meta in metas %}
+                {% with inteligencia=meta.inteligencia %}
                 <article class="goal-item goal-item-page">
                     <div class="goal-item-top">
                         <div>
@@ -85,6 +86,48 @@
                         <div class="goal-progress-bar" style="width: {{ meta.progresso_css }}%;"></div>
                     </div>
 
+                    {% if inteligencia %}
+                        <section class="smart-goal-panel">
+                            <div class="smart-goal-header">
+                                <div>
+                                    <span class="eyebrow">Meta inteligente</span>
+                                    <h4>{{ inteligencia.resumo }}</h4>
+                                </div>
+                                <span class="status-pill status-paid">
+                                    R$ {{ inteligencia.valor_semanal|floatformat:2 }}/semana
+                                </span>
+                            </div>
+
+                            <div class="smart-goal-grid">
+                                <article>
+                                    <span class="goal-label">Guardar por semana</span>
+                                    <strong>R$ {{ inteligencia.valor_semanal|floatformat:2 }}</strong>
+                                </article>
+                                <article>
+                                    <span class="goal-label">Guardar por mês</span>
+                                    <strong>R$ {{ inteligencia.valor_mensal|floatformat:2 }}</strong>
+                                </article>
+                                <article>
+                                    <span class="goal-label">Prazo restante</span>
+                                    <strong>{{ inteligencia.dias_restantes }} dias</strong>
+                                </article>
+                                <article>
+                                    <span class="goal-label">Tempo estimado</span>
+                                    <strong>{{ inteligencia.semanas_estimadas }} semanas</strong>
+                                </article>
+                            </div>
+
+                            <div class="smart-cut-list">
+                                <span class="goal-label">Sugestões de corte</span>
+                                {% for corte in inteligencia.cortes %}
+                                    <p>{{ corte.mensagem }}</p>
+                                {% empty %}
+                                    <p>Cadastre despesas no mês atual para o FinanPy sugerir cortes por categoria.</p>
+                                {% endfor %}
+                            </div>
+                        </section>
+                    {% endif %}
+
                     <div class="goal-item-footer">
                         <span>{{ meta.progresso_percentual }}% concluído • Prioridade {{ meta.get_prioridade_display }}</span>
                         <div class="d-flex gap-2 flex-wrap">
@@ -93,6 +136,7 @@
                         </div>
                     </div>
                 </article>
+                {% endwith %}
             {% empty %}
                 <div class="empty-state-inline">
                     Você ainda não criou metas.
