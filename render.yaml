@@ -10,7 +10,6 @@ services:
     runtime: python
     plan: free
     buildCommand: bash build.sh
-    preDeployCommand: python manage.py migrate
     startCommand: gunicorn finanpy.wsgi:application
     healthCheckPath: /healthz/
     envVars:

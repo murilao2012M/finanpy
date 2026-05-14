@@ -20,7 +20,7 @@ O `render.yaml` ja define:
 
 - Banco PostgreSQL.
 - Build command: `bash build.sh`.
-- Pre-deploy command: `python manage.py migrate`.
+- Migrations dentro do `build.sh`, porque o plano gratuito do Render nao aceita `preDeployCommand`.
 - Start command: `gunicorn finanpy.wsgi:application`.
 - Health check: `/healthz/`.
 
