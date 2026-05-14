@@ -46,6 +46,25 @@ DJANGO_LOG_LEVEL=INFO
 
 O `DATABASE_URL` e o `DJANGO_SECRET_KEY` sao gerados pelo Render via `render.yaml`.
 
+## 3.1. Criar superusuario sem Shell no plano gratuito
+
+Se o Shell estiver bloqueado no plano gratuito, crie o admin pelo build usando variaveis de ambiente:
+
+```text
+CREATE_SUPERUSER_ON_DEPLOY=True
+DJANGO_SUPERUSER_USERNAME=seu_admin
+DJANGO_SUPERUSER_EMAIL=seu_email
+DJANGO_SUPERUSER_PASSWORD=sua_senha_forte
+```
+
+Depois faca `Manual Deploy`. Quando o deploy finalizar e o admin estiver funcionando, volte no Render e troque:
+
+```text
+CREATE_SUPERUSER_ON_DEPLOY=False
+```
+
+Assim o deploy nao tenta criar o superusuario novamente.
+
 ## 4. Configurar webhook no Mercado Pago
 
 Use a URL publica do Render:
