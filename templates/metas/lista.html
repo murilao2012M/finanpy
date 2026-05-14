@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero-panel mb-4">
+    <div>
+        <span class="eyebrow">Planejamento</span>
+        <h1 class="page-title">Metas financeiras</h1>
+        <p class="page-subtitle">Transforme objetivos em progresso visível com acompanhamento claro do valor acumulado e do prazo.</p>
+    </div>
+    <a href="{% url 'criar_meta' %}" class="btn btn-premium">
+        <i class="fa-solid fa-plus"></i>
+        Nova meta
+    </a>
+</section>
+
+<div class="dashboard-grid dashboard-metrics mb-4">
+    <article class="metric-card card-modern">
+        <p class="metric-label">Total de metas</p>
+        <h2 class="metric-value">{{ total_metas }}</h2>
+        <span class="metric-trend text-info">
+            <i class="fa-solid fa-bullseye"></i>
+            Objetivos cadastrados
+        </span>
+    </article>
+    <article class="metric-card card-modern">
+        <p class="metric-label">Em andamento</p>
+        <h2 class="metric-value">{{ metas_em_andamento }}</h2>
+        <span class="metric-trend text-warning">
+            <i class="fa-regular fa-clock"></i>
+            Metas ativas
+        </span>
+    </article>
+    <article class="metric-card card-modern">
+        <p class="metric-label">Concluídas</p>
+        <h2 class="metric-value">{{ metas_concluidas }}</h2>
+        <span class="metric-trend text-success">
+            <i class="fa-solid fa-check"></i>
+            Objetivos atingidos
+        </span>
+    </article>
+</div>
+
+<section class="card-modern">
+    <div class="card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Painel de metas</h2>
+                <p class="panel-subtitle">Cada meta mostra progresso, valor restante, prazo e prioridade.</p>
+            </div>
+        </div>
+
+        <div class="goal-list goal-list-page">
+            {% for meta in metas %}
+                <article class="goal-item goal-item-page">
+                    <div class="goal-item-top">
+                        <div>
+                            <h3>{{ meta.titulo }}</h3>
+                            <p>{{ meta.descricao|default:"Sem descrição adicional." }}</p>
+                        </div>
+                        <span class="status-pill {% if meta.status == 'CONCLUIDA' %}status-paid{% elif meta.status == 'ATRASADA' %}status-overdue{% elif meta.status == 'PAUSADA' %}status-paused{% else %}status-pending{% endif %}">
+                            {{ meta.get_status_display }}
+                        </span>
+                    </div>
+
+                    <div class="goal-values">
+                        <div>
+                            <span class="goal-label">Acumulado</span>
+                            <strong>R$ {{ meta.valor_atual }}</strong>
+                        </div>
+                        <div>
+                            <span class="goal-label">Alvo</span>
+                            <strong>R$ {{ meta.valor_alvo }}</strong>
+                        </div>
+                        <div>
+                            <span class="goal-label">Restante</span>
+                            <strong>R$ {{ meta.valor_restante }}</strong>
+                        </div>
+                        <div>
+                            <span class="goal-label">Prazo</span>
+                            <strong>{{ meta.data_limite|date:"d/m/Y" }}</strong>
+                        </div>
+                    </div>
+
+                    <div class="goal-progress">
+                        <div class="goal-progress-bar" style="width: {{ meta.progresso_css }}%;"></div>
+                    </div>
+
+                    <div class="goal-item-footer">
+                        <span>{{ meta.progresso_percentual }}% concluído • Prioridade {{ meta.get_prioridade_display }}</span>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <a href="{% url 'editar_meta' meta.pk %}" class="btn btn-table-action">Editar</a>
+                            <a href="{% url 'excluir_meta' meta.pk %}" class="btn btn-table-action btn-table-danger">Excluir</a>
+                        </div>
+                    </div>
+                </article>
+            {% empty %}
+                <div class="empty-state-inline">
+                    Você ainda não criou metas.
+                    <a href="{% url 'criar_meta' %}" class="text-link">Começar agora</a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

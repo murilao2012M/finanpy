@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-panel">
+    <div class="auth-side">
+        <span class="eyebrow">Fintech pessoal</span>
+        <h1 class="auth-title">Controle financeiro com cara de produto premium.</h1>
+        <p class="auth-text">Acompanhe receitas, despesas, cartões, relatórios e o crescimento do seu saldo em um painel escuro, limpo e moderno.</p>
+        <div class="auth-highlights">
+            <div class="auth-highlight"><i class="fa-solid fa-chart-line"></i><span>Dashboard com foco em crescimento</span></div>
+            <div class="auth-highlight"><i class="fa-regular fa-credit-card"></i><span>Controle de cartões e parcelas</span></div>
+            <div class="auth-highlight"><i class="fa-solid fa-shield-heart"></i><span>Organização simples e segura</span></div>
+        </div>
+    </div>
+    <div class="auth-card card-modern">
+        <div class="card-body-modern p-4 p-lg-5">
+            <h1 class="page-title page-title-sm text-center">Entrar no FinanPy</h1>
+            <p class="page-subtitle text-center">Use seu usuário e senha para acessar o sistema.</p>
+            <form method="post">
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                    <div class="custom-alert custom-alert-error mb-3">
+                        <span>{{ form.non_field_errors|striptags }}</span>
+                    </div>
+                {% endif %}
+                {% for field in form %}
+                    {% if field.name != 'remember_me' %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+                {% if next %}
+                    <input type="hidden" name="next" value="{{ next }}">
+                {% endif %}
+                <button type="submit" class="btn btn-premium w-100">Entrar</button>
+            </form>
+            <p class="text-center mt-3 mb-0 text-secondary">
+                Ainda não tem conta?
+                <a href="{% url 'registrar_usuario' %}" class="text-link">Criar cadastro</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

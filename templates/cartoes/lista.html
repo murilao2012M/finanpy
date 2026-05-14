@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero-panel mb-4">
+    <div>
+        <span class="eyebrow">Cartões e contas</span>
+        <h1 class="page-title">Cartões de crédito</h1>
+        <p class="page-subtitle">Cadastre cartões, acompanhe faturas e entenda suas compras parceladas.</p>
+    </div>
+    <a href="{% url 'criar_cartao' %}" class="btn btn-premium">
+        <i class="fa-solid fa-plus"></i>
+        Novo cartão
+    </a>
+</section>
+
+<section class="card-modern">
+    <div class="card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Cartões cadastrados</h2>
+                <p class="panel-subtitle">Painel rápido de limite, vencimento e status.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-dark-finance align-middle">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Limite</th>
+                        <th>Fechamento</th>
+                        <th>Vencimento</th>
+                        <th>Status</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cartao in cartoes %}
+                        <tr>
+                            <td class="table-title">{{ cartao.nome }}</td>
+                            <td>R$ {{ cartao.limite }}</td>
+                            <td>Dia {{ cartao.dia_fechamento }}</td>
+                            <td>Dia {{ cartao.dia_vencimento }}</td>
+                            <td>
+                                {% if cartao.ativo %}
+                                    <span class="status-pill status-paid">Ativo</span>
+                                {% else %}
+                                    <span class="status-pill">Inativo</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a href="{% url 'editar_cartao' cartao.pk %}" class="btn btn-table-action">Editar</a>
+                                <a href="{% url 'excluir_cartao' cartao.pk %}" class="btn btn-table-action btn-table-danger">Excluir</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-secondary">Nenhum cartão cadastrado.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

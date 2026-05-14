@@ -1,0 +1,43 @@
+"""Rotas do app financeiro."""
+
+from django.urls import path
+
+from . import views
+
+
+urlpatterns = [
+    path("painel/", views.dashboard, name="dashboard"),
+    path("categorias/", views.lista_categorias, name="lista_categorias"),
+    path("categorias/nova/", views.criar_categoria, name="criar_categoria"),
+    path("categorias/<int:pk>/editar/", views.editar_categoria, name="editar_categoria"),
+    path("categorias/<int:pk>/excluir/", views.excluir_categoria, name="excluir_categoria"),
+    path("cartoes/", views.lista_cartoes, name="lista_cartoes"),
+    path("cartoes/novo/", views.criar_cartao, name="criar_cartao"),
+    path("cartoes/<int:pk>/editar/", views.editar_cartao, name="editar_cartao"),
+    path("cartoes/<int:pk>/excluir/", views.excluir_cartao, name="excluir_cartao"),
+    path("investimentos/", views.lista_investimentos, name="lista_investimentos"),
+    path("investimentos/novo/", views.criar_investimento, name="criar_investimento"),
+    path("investimentos/<int:pk>/editar/", views.editar_investimento, name="editar_investimento"),
+    path("investimentos/<int:pk>/excluir/", views.excluir_investimento, name="excluir_investimento"),
+    path("analise-ia/", views.analise_ia, name="analise_ia"),
+    path("configuracoes/", views.configuracoes, name="configuracoes"),
+    path("configuracoes/checkout/", views.checkout_premium, name="checkout_premium"),
+    path("webhooks/mercado-pago/", views.webhook_mercado_pago, name="webhook_mercado_pago"),
+    path("assinatura/iniciar/", views.iniciar_checkout_premium, name="iniciar_checkout_premium"),
+    path("assinatura/retorno/", views.retorno_assinatura, name="retorno_assinatura"),
+    path("assinatura/sincronizar/", views.sincronizar_assinatura_premium, name="sincronizar_assinatura_premium"),
+    path("assinatura/cancelar/", views.cancelar_assinatura_premium, name="cancelar_assinatura_premium"),
+    path("metas/", views.lista_metas, name="lista_metas"),
+    path("metas/nova/", views.criar_meta, name="criar_meta"),
+    path("metas/<int:pk>/editar/", views.editar_meta, name="editar_meta"),
+    path("metas/<int:pk>/excluir/", views.excluir_meta, name="excluir_meta"),
+    path("lancamentos/", views.lista_lancamentos, name="lista_lancamentos"),
+    path("lancamentos/novo/", views.criar_lancamento, name="criar_lancamento"),
+    path("lancamentos/<int:pk>/editar/", views.editar_lancamento, name="editar_lancamento"),
+    path("lancamentos/<int:pk>/excluir/", views.excluir_lancamento, name="excluir_lancamento"),
+    path("receitas/", views.lista_receitas, name="lista_receitas"),
+    path("despesas/", views.lista_despesas, name="lista_despesas"),
+    path("contas/pagas/", views.contas_pagas, name="contas_pagas"),
+    path("contas/pendentes/", views.contas_pendentes, name="contas_pendentes"),
+    path("relatorios/", views.relatorios, name="relatorios"),
+]

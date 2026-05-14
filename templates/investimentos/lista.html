@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero-panel mb-4">
+    <div>
+        <span class="eyebrow">Carteira</span>
+        <h1 class="page-title">Investimentos</h1>
+        <p class="page-subtitle">Cadastre sua carteira, acompanhe evolução e visualize a rentabilidade dos seus ativos.</p>
+    </div>
+    <a href="{% url 'criar_investimento' %}" class="btn btn-premium">
+        <i class="fa-solid fa-plus"></i>
+        Novo investimento
+    </a>
+</section>
+
+<div class="dashboard-grid dashboard-metrics mb-4">
+    <article class="metric-card card-modern">
+        <p class="metric-label">Total aplicado</p>
+        <h2 class="metric-value">R$ {{ total_aplicado }}</h2>
+        <span class="metric-trend text-info">
+            <i class="fa-solid fa-wallet"></i>
+            Capital em investimentos ativos
+        </span>
+    </article>
+    <article class="metric-card card-modern">
+        <p class="metric-label">Valor atual</p>
+        <h2 class="metric-value">R$ {{ total_atual }}</h2>
+        <span class="metric-trend text-success">
+            <i class="fa-solid fa-chart-line"></i>
+            Valor consolidado da carteira
+        </span>
+    </article>
+    <article class="metric-card card-modern">
+        <p class="metric-label">Rentabilidade</p>
+        <h2 class="metric-value">R$ {{ rentabilidade_total }}</h2>
+        <span class="metric-trend {% if rentabilidade_total >= 0 %}text-success{% else %}text-danger{% endif %}">
+            <i class="fa-solid {% if rentabilidade_total >= 0 %}fa-caret-up{% else %}fa-caret-down{% endif %}"></i>
+            Diferença entre valor atual e aplicado
+        </span>
+    </article>
+    <article class="metric-card card-modern">
+        <p class="metric-label">Ativos em carteira</p>
+        <h2 class="metric-value">{{ investimentos_ativos }}</h2>
+        <span class="metric-trend text-warning">
+            <i class="fa-solid fa-layer-group"></i>
+            {{ total_investimentos }} registros no total
+        </span>
+    </article>
+</div>
+
+<section class="card-modern">
+    <div class="card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Lista de investimentos</h2>
+                <p class="panel-subtitle">Gerencie tipo, instituição, valor aplicado, valor atual e status de cada posição.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-dark-finance align-middle">
+                <thead>
+                    <tr>
+                        <th>Investimento</th>
+                        <th>Tipo</th>
+                        <th>Status</th>
+                        <th>Aplicado</th>
+                        <th>Atual</th>
+                        <th>Rentabilidade</th>
+                        <th>Data</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for investimento in investimentos %}
+                        <tr>
+                            <td>
+                                <div class="table-title">{{ investimento.nome }}</div>
+                                <div class="table-subtitle">{{ investimento.instituicao }}</div>
+                            </td>
+                            <td>{{ investimento.get_tipo_display }}</td>
+                            <td>
+                                <span class="status-pill {% if investimento.status == 'ATIVO' %}status-paid{% else %}status-paused{% endif %}">
+                                    {{ investimento.get_status_display }}
+                                </span>
+                            </td>
+                            <td>R$ {{ investimento.valor_aplicado }}</td>
+                            <td>R$ {{ investimento.valor_atual }}</td>
+                            <td class="{% if investimento.rentabilidade_valor >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                R$ {{ investimento.rentabilidade_valor }}
+                                <div class="table-subtitle">{{ investimento.rentabilidade_percentual }}%</div>
+                            </td>
+                            <td>{{ investimento.data_aplicacao|date:"d/m/Y" }}</td>
+                            <td class="text-end">
+                                <a href="{% url 'editar_investimento' investimento.pk %}" class="btn btn-table-action">Editar</a>
+                                <a href="{% url 'excluir_investimento' investimento.pk %}" class="btn btn-table-action btn-table-danger">Excluir</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-secondary">Nenhum investimento cadastrado.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

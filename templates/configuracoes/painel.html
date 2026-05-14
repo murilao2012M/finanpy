@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero-panel mb-4">
+    <div>
+        <span class="eyebrow">Conta e preferencias</span>
+        <h1 class="page-title">Configuracoes</h1>
+        <p class="page-subtitle">Gerencie seu perfil, seu plano, suas preferencias do painel e a seguranca da conta em um so lugar.</p>
+    </div>
+</section>
+
+<div class="dashboard-grid dashboard-metrics mb-4">
+    <article class="metric-card card-modern">
+        <p class="metric-label">Plano atual</p>
+        <h2 class="metric-value">{{ plano_usuario.get_nome_plano_display }}</h2>
+        <span class="metric-trend {% if plano_usuario.eh_premium %}text-success{% else %}text-warning{% endif %}">
+            <i class="fa-solid fa-crown"></i>
+            {% if plano_usuario.eh_premium %}Acesso completo com IA{% else %}Acesso essencial com limites{% endif %}
+        </span>
+    </article>
+    <article class="metric-card card-modern">
+        <p class="metric-label">Valor mensal</p>
+        <h2 class="metric-value">R$ {{ plano_usuario.valor_mensal }}</h2>
+        <span class="metric-trend text-info">
+            <i class="fa-solid fa-wallet"></i>
+            Cobranca recorrente do plano
+        </span>
+    </article>
+    <article class="metric-card card-modern">
+        <p class="metric-label">IA inclusa</p>
+        <h2 class="metric-value">{% if plano_usuario.ia_habilitada %}Ativa{% else %}Nao{% endif %}</h2>
+        <span class="metric-trend {% if plano_usuario.ia_habilitada %}text-success{% else %}text-secondary{% endif %}">
+            <i class="fa-solid fa-robot"></i>
+            Recurso premium do produto
+        </span>
+    </article>
+    <article class="metric-card card-modern">
+        <p class="metric-label">Saldo no painel</p>
+        <h2 class="metric-value">{% if configuracao_usuario.exibir_saldo_dashboard %}Visivel{% else %}Oculto{% endif %}</h2>
+        <span class="metric-trend {% if configuracao_usuario.exibir_saldo_dashboard %}text-success{% else %}text-secondary{% endif %}">
+            <i class="fa-solid fa-eye"></i>
+            Privacidade da home
+        </span>
+    </article>
+</div>
+
+<section class="card-modern card-body-modern mb-4">
+    <div class="panel-header mb-4">
+        <div>
+            <h2 class="panel-title">Plano do FinanPy</h2>
+            <p class="panel-subtitle">O Freemium e ideal para comecar. O Premium custa R$ 10,50 por mes e libera IA, mais cartoes, mais metas e mais investimentos.</p>
+        </div>
+    </div>
+    <div class="goal-values mb-4">
+        <div>
+            <span class="goal-label">Cartoes</span>
+            <strong>{{ plano_usuario.limite_cartoes }}</strong>
+        </div>
+        <div>
+            <span class="goal-label">Metas</span>
+            <strong>{{ plano_usuario.limite_metas }}</strong>
+        </div>
+        <div>
+            <span class="goal-label">Investimentos</span>
+            <strong>{{ plano_usuario.limite_investimentos }}</strong>
+        </div>
+        <div>
+            <span class="goal-label">IA incluida</span>
+            <strong>{% if plano_usuario.ia_habilitada %}Sim{% else %}Nao{% endif %}</strong>
+        </div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap mb-3">
+        {% if plano_usuario.eh_premium %}
+            <form method="post" action="{% url 'cancelar_assinatura_premium' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-premium-danger">Cancelar assinatura premium</button>
+            </form>
+            <a href="{% url 'analise_ia' %}" class="btn btn-premium-outline">Abrir análise IA</a>
+        {% else %}
+            <a href="{% url 'checkout_premium' %}" class="btn btn-premium">Ir para checkout premium de R$ 10,50/mes</a>
+        {% endif %}
+
+        {% if plano_usuario.mercado_pago_preapproval_id %}
+            <a href="{% url 'sincronizar_assinatura_premium' %}" class="btn btn-premium-outline">Sincronizar status no Mercado Pago</a>
+        {% endif %}
+    </div>
+
+    <div class="goal-values">
+        <div>
+            <span class="goal-label">ID da assinatura</span>
+            <strong>{{ plano_usuario.mercado_pago_preapproval_id|default:"Ainda nao gerado" }}</strong>
+        </div>
+        <div>
+            <span class="goal-label">Status no gateway</span>
+            <strong>{{ plano_usuario.mercado_pago_status|default:"Nao sincronizado" }}</strong>
+        </div>
+        <div>
+            <span class="goal-label">IA liberada</span>
+            <strong>{% if plano_usuario.ia_habilitada %}Sim{% else %}Nao{% endif %}</strong>
+        </div>
+        <div>
+            <span class="goal-label">Checkout salvo</span>
+            <strong>{% if plano_usuario.mercado_pago_checkout_url %}Disponivel{% else %}Nao{% endif %}</strong>
+        </div>
+    </div>
+</section>
+
+<section class="card-modern card-body-modern mb-4">
+    <div class="panel-header mb-4">
+        <div>
+            <h2 class="panel-title">Analise financeira com IA</h2>
+            <p class="panel-subtitle">O modulo premium do FinanPy interpreta seu mês, destaca riscos e cria um plano de ação objetivo.</p>
+        </div>
+        {% if plano_usuario.ia_habilitada %}
+            <a href="{% url 'analise_ia' %}" class="btn btn-premium">Gerar analise</a>
+        {% else %}
+            <a href="{% url 'checkout_premium' %}" class="btn btn-premium-outline">Liberar IA</a>
+        {% endif %}
+    </div>
+
+    <div class="goal-values mb-3">
+        <div>
+            <span class="goal-label">Objetivo</span>
+            <strong>Explicar sua vida financeira com clareza</strong>
+        </div>
+        <div>
+            <span class="goal-label">Entrega</span>
+            <strong>Resumo, alertas, oportunidades e plano de ação</strong>
+        </div>
+        <div>
+            <span class="goal-label">Disponibilidade</span>
+            <strong>{% if plano_usuario.ia_habilitada %}Premium ativo{% else %}Apenas no Premium{% endif %}</strong>
+        </div>
+    </div>
+
+    {% if ultima_analise_ia %}
+        <div class="ai-highlight-card">
+            <div class="ai-highlight-header">
+                <span class="status-pill ai-health-pill ai-health-{{ ultima_analise_ia.saude_financeira|lower }}">
+                    Saúde {{ ultima_analise_ia.get_saude_financeira_display }}
+                </span>
+                <span class="panel-chip">{{ ultima_analise_ia.periodo_inicio|date:"m/Y" }}</span>
+            </div>
+            <p class="ai-highlight-summary">{{ ultima_analise_ia.resumo_executivo|default:"A última execução da IA ficou registrada na sua conta." }}</p>
+        </div>
+    {% else %}
+        <div class="empty-state-inline">Nenhuma análise IA foi gerada até agora.</div>
+    {% endif %}
+</section>
+
+<div class="dashboard-layout">
+    <section class="card-modern card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Perfil da conta</h2>
+                <p class="panel-subtitle">Atualize nome, e-mail e nome de usuario usados no acesso ao sistema.</p>
+            </div>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="row">
+                {% for field in perfil_form %}
+                    <div class="col-md-6 mb-3">
+                        <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+            <button type="submit" name="salvar_perfil" class="btn btn-premium">Salvar perfil</button>
+        </form>
+    </section>
+
+    <section class="card-modern card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Preferencias do painel</h2>
+                <p class="panel-subtitle">Escolha como o FinanPy deve se comportar no seu dia a dia.</p>
+            </div>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="row">
+                {% for field in preferencias_form %}
+                    <div class="{% if field.field.widget.input_type == 'checkbox' %}col-12{% else %}col-md-6{% endif %} mb-3">
+                        <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                        {% if field.field.widget.input_type == 'checkbox' %}
+                            <div class="form-check form-switch settings-switch">
+                                {{ field }}
+                            </div>
+                        {% else %}
+                            {{ field }}
+                        {% endif %}
+                        {% for error in field.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+            <button type="submit" name="salvar_preferencias" class="btn btn-premium">Salvar preferencias</button>
+        </form>
+    </section>
+</div>
+
+<section class="card-modern card-body-modern mt-4">
+    <div class="panel-header mb-4">
+        <div>
+            <h2 class="panel-title">Seguranca da conta</h2>
+            <p class="panel-subtitle">Troque sua senha periodicamente para manter o acesso mais protegido.</p>
+        </div>
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <div class="row">
+            {% for field in senha_form %}
+                <div class="col-md-4 mb-3">
+                    <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <div class="form-text register-help-text">{{ field.help_text|safe }}</div>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+        <button type="submit" name="alterar_senha" class="btn btn-premium-danger">Alterar senha</button>
+    </form>
+</section>
+{% endblock %}

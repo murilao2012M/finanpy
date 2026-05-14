@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero-panel mb-4">
+    <div>
+        <span class="eyebrow">Premium intelligence</span>
+        <h1 class="page-title">Análise financeira com IA</h1>
+        <p class="page-subtitle">O assistente premium do FinanPy interpreta seus números, identifica riscos e sugere próximos passos reais.</p>
+    </div>
+    <div class="toolbar-filter">
+        {% if ia_liberada %}
+            <span class="status-pill status-paid"><i class="fa-solid fa-crown me-2"></i>IA liberada</span>
+        {% else %}
+            <a href="{% url 'checkout_premium' %}" class="btn btn-premium">Ativar Premium</a>
+        {% endif %}
+    </div>
+</section>
+
+<div class="dashboard-layout mb-4">
+    <section class="card-modern card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Como a IA trabalha</h2>
+                <p class="panel-subtitle">Antes de responder, o FinanPy envia para a IA apenas o contexto financeiro consolidado do mês selecionado.</p>
+            </div>
+        </div>
+
+        <div class="dashboard-grid ai-info-grid">
+            <article class="goal-summary-card">
+                <span>Objetivo</span>
+                <strong>Resumo financeiro claro</strong>
+            </article>
+            <article class="goal-summary-card">
+                <span>Entrega</span>
+                <strong>Alertas e plano de ação</strong>
+            </article>
+            <article class="goal-summary-card">
+                <span>Plano</span>
+                <strong>{{ plano_usuario.get_nome_plano_display }}</strong>
+            </article>
+        </div>
+
+        <div class="dashboard-layout ai-rules-layout mt-4">
+            <div class="card-modern ai-mini-card">
+                <h3 class="panel-title mb-3">Objetivos da análise</h3>
+                <ul class="ai-bullet-list">
+                    {% for item in objetivos_ia %}
+                        <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="card-modern ai-mini-card">
+                <h3 class="panel-title mb-3">Regras da IA</h3>
+                <ul class="ai-bullet-list">
+                    {% for item in regras_ia %}
+                        <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section class="card-modern card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Gerar nova análise</h2>
+                <p class="panel-subtitle">Escolha o mês que será interpretado pela IA.</p>
+            </div>
+        </div>
+
+        {% if ia_liberada %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="{{ form.mes_referencia.id_for_label }}" class="field-label">{{ form.mes_referencia.label }}</label>
+                    {{ form.mes_referencia }}
+                    {% for error in form.mes_referencia.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                <div class="mb-4">
+                    <div class="form-check form-switch settings-switch">
+                        {{ form.forcar_regeneracao }}
+                    </div>
+                    <label for="{{ form.forcar_regeneracao.id_for_label }}" class="field-label mt-2">{{ form.forcar_regeneracao.label }}</label>
+                </div>
+                <button type="submit" class="btn btn-premium w-100">Gerar análise inteligente</button>
+            </form>
+        {% else %}
+            <div class="ai-upsell ai-upsell-vertical">
+                <div>
+                    <strong>Este recurso faz parte do Premium</strong>
+                    <p>Com o plano completo, o usuário recebe leitura mensal inteligente, riscos, oportunidades e ações priorizadas.</p>
+                </div>
+                <a href="{% url 'checkout_premium' %}" class="btn btn-premium w-100">Ir para o checkout Premium</a>
+            </div>
+        {% endif %}
+    </section>
+</div>
+
+<div class="dashboard-layout">
+    <section class="card-modern card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Leitura atual da IA</h2>
+                <p class="panel-subtitle">A última análise gerada fica salva para consulta e comparação futura.</p>
+            </div>
+            {% if analise_atual %}
+                <span class="panel-chip">{{ analise_atual.periodo_inicio|date:"m/Y" }}</span>
+            {% endif %}
+        </div>
+
+        {% if analise_atual and analise_atual.status == "SUCESSO" %}
+            <div class="ai-highlight-card mb-4">
+                <div class="ai-highlight-header">
+                    <span class="status-pill ai-health-pill ai-health-{{ analise_atual.saude_financeira|lower }}">
+                        Saúde {{ analise_atual.get_saude_financeira_display }}
+                    </span>
+                    <span class="panel-chip">{{ analise_atual.modelo }}</span>
+                </div>
+                <p class="ai-highlight-summary">{{ analise_atual.resumo_executivo }}</p>
+            </div>
+
+            <div class="ai-metrics-grid mb-4">
+                {% for chave, valor in analise_atual.metricas_resumo.items %}
+                    <article class="goal-summary-card">
+                        <span>{{ chave }}</span>
+                        <strong>{{ valor }}</strong>
+                    </article>
+                {% endfor %}
+            </div>
+
+            <div class="dashboard-layout ai-rules-layout">
+                <div class="card-modern ai-mini-card">
+                    <h3 class="panel-title mb-3">Sinais positivos</h3>
+                    <ul class="ai-bullet-list">
+                        {% for item in analise_atual.sinais_positivos %}
+                            <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <div class="card-modern ai-mini-card">
+                    <h3 class="panel-title mb-3">Alertas prioritários</h3>
+                    <ul class="ai-bullet-list">
+                        {% for item in analise_atual.alertas_prioritarios %}
+                            <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <section class="card-modern ai-mini-card mt-4">
+                <h3 class="panel-title mb-3">Oportunidades percebidas</h3>
+                <ul class="ai-bullet-list">
+                    {% for item in analise_atual.oportunidades %}
+                        <li>{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </section>
+
+            <section class="card-modern ai-mini-card mt-4">
+                <h3 class="panel-title mb-3">Plano de ação recomendado</h3>
+                <div class="goal-list">
+                    {% for acao in analise_atual.plano_acao %}
+                        <article class="goal-item goal-item-page">
+                            <div class="goal-item-top">
+                                <div>
+                                    <h3>{{ acao.titulo }}</h3>
+                                    <p>{{ acao.descricao }}</p>
+                                </div>
+                                <span class="status-pill {% if acao.prazo == 'AGORA' %}status-overdue{% elif acao.prazo == '7_DIAS' %}status-pending{% else %}status-paid{% endif %}">
+                                    {{ acao.prazo }}
+                                </span>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            </section>
+        {% elif analise_atual and analise_atual.status == "ERRO" %}
+            <div class="custom-alert custom-alert-danger">
+                <span>{{ analise_atual.mensagem_erro }}</span>
+            </div>
+        {% else %}
+            <div class="empty-state-inline">
+                Nenhuma análise foi gerada até agora. Quando você executar a IA, o resultado aparecerá aqui.
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="card-modern card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Histórico recente</h2>
+                <p class="panel-subtitle">As últimas execuções ficam registradas na conta do usuário.</p>
+            </div>
+        </div>
+
+        <div class="goal-list">
+            {% for analise in analises_recentes %}
+                <article class="goal-item">
+                    <div class="goal-item-top">
+                        <div>
+                            <h3>{{ analise.periodo_inicio|date:"m/Y" }}</h3>
+                            <p>{{ analise.modelo }} • {{ analise.criada_em|date:"d/m/Y H:i" }}</p>
+                        </div>
+                        <span class="status-pill {% if analise.status == 'SUCESSO' %}status-paid{% else %}status-overdue{% endif %}">
+                            {{ analise.get_status_display }}
+                        </span>
+                    </div>
+                    {% if analise.status == "SUCESSO" %}
+                        <p class="table-subtitle">{{ analise.resumo_executivo|truncatechars:180 }}</p>
+                    {% else %}
+                        <p class="table-subtitle">{{ analise.mensagem_erro|default:"A execução não foi concluída." }}</p>
+                    {% endif %}
+                </article>
+            {% empty %}
+                <div class="empty-state-inline">O histórico da IA ainda está vazio.</div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

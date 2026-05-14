@@ -1,0 +1,511 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<section class="hero-panel mb-4">
+    <div>
+        <span class="eyebrow">Painel financeiro</span>
+        <h1 class="page-title">Olá, {{ user.first_name|default:user.username }}!</h1>
+        <p class="page-subtitle">Aqui está o resumo financeiro da sua vida para {{ inicio_mes|date:"F/Y" }}.</p>
+    </div>
+    <form method="get" class="toolbar-filter">
+        <div>
+            <label for="mes" class="field-label">Período</label>
+            <div class="month-filter">
+                <i class="fa-regular fa-calendar"></i>
+                <input type="month" name="mes" id="mes" value="{{ mes_filtro }}" class="form-control">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-premium">Atualizar</button>
+    </form>
+</section>
+
+<div class="dashboard-grid dashboard-metrics mb-4">
+    <article class="metric-card metric-card-primary card-modern">
+        <div class="metric-top">
+            <div class="metric-icon metric-icon-primary">
+                <i class="fa-solid fa-wallet"></i>
+            </div>
+            <button class="metric-more" type="button" aria-label="Mais opções">
+                <i class="fa-solid fa-ellipsis"></i>
+            </button>
+        </div>
+        <p class="metric-label">Saldo atual</p>
+        <h2 class="metric-value">R$ {{ saldo_mes }}</h2>
+        <span class="metric-trend text-success">
+            <i class="fa-solid fa-caret-up"></i>
+            Fluxo realizado no mês
+        </span>
+    </article>
+
+    <article class="metric-card card-modern">
+        <div class="metric-top">
+            <div class="metric-icon metric-icon-success">
+                <i class="fa-solid fa-arrow-trend-up"></i>
+            </div>
+            <button class="metric-more" type="button" aria-label="Mais opções">
+                <i class="fa-solid fa-ellipsis"></i>
+            </button>
+        </div>
+        <p class="metric-label">Receitas</p>
+        <h2 class="metric-value">R$ {{ total_receitas }}</h2>
+        <span class="metric-trend text-success">
+            <i class="fa-solid fa-caret-up"></i>
+            Entradas do período filtrado
+        </span>
+    </article>
+
+    <article class="metric-card card-modern">
+        <div class="metric-top">
+            <div class="metric-icon metric-icon-danger">
+                <i class="fa-solid fa-arrow-trend-down"></i>
+            </div>
+            <button class="metric-more" type="button" aria-label="Mais opções">
+                <i class="fa-solid fa-ellipsis"></i>
+            </button>
+        </div>
+        <p class="metric-label">Despesas</p>
+        <h2 class="metric-value">R$ {{ total_despesas }}</h2>
+        <span class="metric-trend text-danger">
+            <i class="fa-solid fa-caret-down"></i>
+            Saídas do período filtrado
+        </span>
+    </article>
+
+    <article class="metric-card card-modern">
+        <div class="metric-top">
+            <div class="metric-icon metric-icon-purple">
+                <i class="fa-solid fa-piggy-bank"></i>
+            </div>
+            <button class="metric-more" type="button" aria-label="Mais opções">
+                <i class="fa-solid fa-ellipsis"></i>
+            </button>
+        </div>
+        <p class="metric-label">Investimentos</p>
+        <h2 class="metric-value">R$ {{ total_investimentos_atual }}</h2>
+        <span class="metric-trend {% if rentabilidade_investimentos >= 0 %}text-success{% else %}text-danger{% endif %}">
+            <i class="fa-solid {% if rentabilidade_investimentos >= 0 %}fa-caret-up{% else %}fa-caret-down{% endif %}"></i>
+            Rentabilidade de R$ {{ rentabilidade_investimentos }}
+        </span>
+    </article>
+</div>
+
+<div class="dashboard-layout mb-4">
+    <section class="card-modern chart-card">
+        <div class="panel-header">
+            <div>
+                <h2 class="panel-title">Evolução financeira</h2>
+                <p class="panel-subtitle">Receitas, despesas e saldo dos últimos 6 meses.</p>
+            </div>
+            <span class="panel-chip">Últimos 6 meses</span>
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="evolucaoChart"></canvas>
+        </div>
+    </section>
+
+    <section class="card-modern chart-card">
+        <div class="panel-header">
+            <div>
+                <h2 class="panel-title">Despesas por categoria</h2>
+                <p class="panel-subtitle">Veja onde seu dinheiro mais sai no mês atual.</p>
+            </div>
+            <span class="panel-chip panel-chip-purple">Resumo</span>
+        </div>
+        <div class="donut-layout">
+            <div class="donut-wrapper">
+                <canvas id="categoriasChart"></canvas>
+            </div>
+            <ul class="category-legend">
+                {% for item in despesas_por_categoria %}
+                    <li>
+                        <span>{{ item.categoria__nome }}</span>
+                        <strong>R$ {{ item.total }}</strong>
+                    </li>
+                {% empty %}
+                    <li>
+                        <span>Nenhuma despesa cadastrada no período.</span>
+                        <strong>R$ 0,00</strong>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </section>
+</div>
+
+<div class="dashboard-layout mb-4">
+    <section class="card-modern card-body-modern">
+        <div class="panel-header">
+            <div>
+                <h2 class="panel-title">Assistente financeiro com IA</h2>
+                <p class="panel-subtitle">Leitura inteligente do seu mês com alertas, oportunidades e plano de ação.</p>
+            </div>
+            <a href="{% url 'analise_ia' %}" class="btn btn-panel">
+                {% if ia_liberada %}Abrir análise{% else %}Conhecer premium{% endif %}
+            </a>
+        </div>
+
+        {% if ia_liberada and analise_ia_mes %}
+            <div class="ai-highlight-card">
+                <div class="ai-highlight-header">
+                    <span class="status-pill ai-health-pill ai-health-{{ analise_ia_mes.saude_financeira|lower }}">
+                        Saúde {{ analise_ia_mes.get_saude_financeira_display }}
+                    </span>
+                    <span class="panel-chip">{{ analise_ia_mes.periodo_inicio|date:"m/Y" }}</span>
+                </div>
+                <p class="ai-highlight-summary">{{ analise_ia_mes.resumo_executivo }}</p>
+                <div class="ai-metrics-grid">
+                    {% for chave, valor in analise_ia_mes.metricas_resumo.items %}
+                        <div class="goal-summary-card">
+                            <span>{{ chave }}</span>
+                            <strong>{{ valor }}</strong>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% elif ia_liberada %}
+            <div class="empty-state-inline">
+                Sua conta já possui IA liberada.
+                <a href="{% url 'analise_ia' %}" class="text-link">Gerar a primeira análise do mês</a>
+            </div>
+        {% else %}
+            <div class="ai-upsell">
+                <div>
+                    <strong>Premium com IA real</strong>
+                    <p>Receba resumo executivo, alertas prioritários e plano de ação com base nos seus dados financeiros.</p>
+                </div>
+                <a href="{% url 'configuracoes' %}" class="btn btn-premium">Fazer upgrade</a>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="card-modern card-body-modern">
+        <div class="panel-header">
+            <div>
+                <h2 class="panel-title">Radar do mês</h2>
+                <p class="panel-subtitle">Sinais rápidos para decidir onde agir primeiro.</p>
+            </div>
+        </div>
+
+        <div class="goal-list">
+            <article class="goal-item">
+                <div class="goal-item-top">
+                    <div>
+                        <h3>Saldo previsto</h3>
+                        <p>Resultado estimado considerando receitas e despesas do período.</p>
+                    </div>
+                    <strong class="{% if saldo_previsto >= 0 %}text-success{% else %}text-danger{% endif %}">R$ {{ saldo_previsto }}</strong>
+                </div>
+            </article>
+            <article class="goal-item">
+                <div class="goal-item-top">
+                    <div>
+                        <h3>Contas pendentes</h3>
+                        <p>{{ quantidade_pendentes }} lançamento(s) aguardando pagamento.</p>
+                    </div>
+                    <strong>R$ {{ total_pendentes }}</strong>
+                </div>
+            </article>
+            <article class="goal-item">
+                <div class="goal-item-top">
+                    <div>
+                        <h3>Contas atrasadas</h3>
+                        <p>{{ quantidade_atrasados }} lançamento(s) já passaram do prazo.</p>
+                    </div>
+                    <strong class="{% if total_atrasados > 0 %}text-danger{% endif %}">R$ {{ total_atrasados }}</strong>
+                </div>
+            </article>
+        </div>
+    </section>
+</div>
+
+<div class="dashboard-layout">
+    <section class="card-modern card-body-modern">
+        <div class="panel-header">
+            <div>
+                <h2 class="panel-title">Transações recentes</h2>
+                <p class="panel-subtitle">Últimos lançamentos do mês selecionado.</p>
+            </div>
+            <a href="{% url 'lista_lancamentos' %}?mes={{ mes_filtro }}" class="btn btn-panel">Ver todas</a>
+        </div>
+
+        <div class="transactions-list">
+            {% for lancamento in lancamentos_recentes %}
+                <article class="transaction-item">
+                    <div class="transaction-icon {% if lancamento.tipo == 'RECEITA' %}transaction-icon-success{% else %}transaction-icon-danger{% endif %}">
+                        {% if lancamento.tipo == "RECEITA" %}
+                            <i class="fa-solid fa-arrow-down"></i>
+                        {% else %}
+                            <i class="fa-solid fa-arrow-up"></i>
+                        {% endif %}
+                    </div>
+                    <div class="transaction-main">
+                        <h3>{{ lancamento.descricao_completa }}</h3>
+                        <p>{{ lancamento.categoria.nome }} • {{ lancamento.get_status_display }}</p>
+                    </div>
+                    <div class="transaction-meta">
+                        <strong class="{% if lancamento.tipo == 'RECEITA' %}text-success{% else %}text-light{% endif %}">
+                            {% if lancamento.tipo == "RECEITA" %}+{% else %}-{% endif %} R$ {{ lancamento.valor }}
+                        </strong>
+                        <span>{{ lancamento.data_competencia|date:"d M" }}</span>
+                    </div>
+                </article>
+            {% empty %}
+                <div class="empty-state-inline">Nenhum lançamento encontrado no mês selecionado.</div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="card-modern card-body-modern">
+        <div class="panel-header">
+            <div>
+                <h2 class="panel-title">Metas financeiras</h2>
+                <p class="panel-subtitle">Acompanhe os objetivos que estão movendo seu crescimento.</p>
+            </div>
+            <a href="{% url 'lista_metas' %}" class="btn btn-panel">Ver todas</a>
+        </div>
+
+        <div class="goals-summary">
+            <div class="goal-summary-card">
+                <span>Total</span>
+                <strong>{{ quantidade_metas }}</strong>
+            </div>
+            <div class="goal-summary-card">
+                <span>Concluídas</span>
+                <strong>{{ metas_concluidas }}</strong>
+            </div>
+        </div>
+
+        <div class="goal-list">
+            {% for meta in metas_dashboard %}
+                <article class="goal-item">
+                    <div class="goal-item-top">
+                        <div>
+                            <h3>{{ meta.titulo }}</h3>
+                            <p>R$ {{ meta.valor_atual }} / R$ {{ meta.valor_alvo }}</p>
+                        </div>
+                        <span class="status-pill {% if meta.status == 'CONCLUIDA' %}status-paid{% elif meta.status == 'ATRASADA' %}status-overdue{% elif meta.status == 'PAUSADA' %}status-paused{% else %}status-pending{% endif %}">
+                            {{ meta.get_status_display }}
+                        </span>
+                    </div>
+                    <div class="goal-progress">
+                        <div class="goal-progress-bar" style="width: {{ meta.progresso_css }}%;"></div>
+                    </div>
+                    <div class="goal-item-footer">
+                        <span>{{ meta.progresso_percentual }}% concluído</span>
+                        <span>Faltam R$ {{ meta.valor_restante }}</span>
+                    </div>
+                </article>
+            {% empty %}
+                <div class="empty-state-inline">
+                    Nenhuma meta cadastrada ainda.
+                    <a href="{% url 'criar_meta' %}" class="text-link">Criar minha primeira meta</a>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+
+<div class="dashboard-layout mt-4">
+    <section class="card-modern card-body-modern">
+        <div class="panel-header">
+            <div>
+                <h2 class="panel-title">Carteira de investimentos</h2>
+                <p class="panel-subtitle">Resumo dos registros de investimento cadastrados no seu perfil.</p>
+            </div>
+            <a href="{% url 'lista_investimentos' %}" class="btn btn-panel">Ver carteira</a>
+        </div>
+
+        <div class="goals-summary">
+            <div class="goal-summary-card">
+                <span>Total aplicado</span>
+                <strong>R$ {{ total_investido }}</strong>
+            </div>
+            <div class="goal-summary-card">
+                <span>Investimentos ativos</span>
+                <strong>{{ quantidade_investimentos_ativos }}</strong>
+            </div>
+        </div>
+
+        <div class="goal-list">
+            {% for investimento in investimentos_dashboard %}
+                <article class="goal-item">
+                    <div class="goal-item-top">
+                        <div>
+                            <h3>{{ investimento.nome }}</h3>
+                            <p>{{ investimento.instituicao }} • {{ investimento.get_tipo_display }}</p>
+                        </div>
+                        <span class="status-pill {% if investimento.status == 'ATIVO' %}status-paid{% else %}status-paused{% endif %}">
+                            {{ investimento.get_status_display }}
+                        </span>
+                    </div>
+                    <div class="goal-values">
+                        <div>
+                            <span class="goal-label">Aplicado</span>
+                            <strong>R$ {{ investimento.valor_aplicado }}</strong>
+                        </div>
+                        <div>
+                            <span class="goal-label">Atual</span>
+                            <strong>R$ {{ investimento.valor_atual }}</strong>
+                        </div>
+                        <div>
+                            <span class="goal-label">Rentabilidade</span>
+                            <strong class="{% if investimento.rentabilidade_valor >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                R$ {{ investimento.rentabilidade_valor }}
+                            </strong>
+                        </div>
+                    </div>
+                </article>
+            {% empty %}
+                <div class="empty-state-inline">
+                    Nenhum investimento cadastrado ainda.
+                    <a href="{% url 'criar_investimento' %}" class="text-link">Cadastrar meu primeiro investimento</a>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="card-modern card-body-modern">
+        <div class="panel-header">
+            <div>
+                <h2 class="panel-title">Cartões ativos</h2>
+                <p class="panel-subtitle">Acompanhe limite e fatura estimada dos cartões do mês.</p>
+            </div>
+            <a href="{% url 'lista_cartoes' %}" class="btn btn-panel">Ver cartões</a>
+        </div>
+
+        <div class="goal-list">
+            {% for cartao in cartoes_resumo %}
+                <article class="goal-item">
+                    <div class="goal-item-top">
+                        <div>
+                            <h3>{{ cartao.nome }}</h3>
+                            <p>Fechamento dia {{ cartao.dia_fechamento }} • Vencimento dia {{ cartao.dia_vencimento }}</p>
+                        </div>
+                        <span class="status-pill status-paid">Ativo</span>
+                    </div>
+                    <div class="goal-values">
+                        <div>
+                            <span class="goal-label">Limite</span>
+                            <strong>R$ {{ cartao.limite }}</strong>
+                        </div>
+                        <div>
+                            <span class="goal-label">Fatura do mês</span>
+                            <strong>R$ {{ cartao.total_fatura|default:"0.00" }}</strong>
+                        </div>
+                    </div>
+                </article>
+            {% empty %}
+                <div class="empty-state-inline">
+                    Nenhum cartão ativo cadastrado no momento.
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ chart_labels|json_script:"chart-labels" }}
+{{ chart_receitas|json_script:"chart-receitas" }}
+{{ chart_despesas|json_script:"chart-despesas" }}
+{{ chart_saldo|json_script:"chart-saldo" }}
+{{ categorias_chart|json_script:"chart-categorias" }}
+{{ totais_categorias_chart|json_script:"chart-categorias-totais" }}
+<script>
+    const labels = JSON.parse(document.getElementById("chart-labels").textContent);
+    const receitas = JSON.parse(document.getElementById("chart-receitas").textContent);
+    const despesas = JSON.parse(document.getElementById("chart-despesas").textContent);
+    const saldo = JSON.parse(document.getElementById("chart-saldo").textContent);
+    const categorias = JSON.parse(document.getElementById("chart-categorias").textContent);
+    const categoriasTotais = JSON.parse(document.getElementById("chart-categorias-totais").textContent);
+
+    const gridColor = "rgba(148, 163, 184, 0.12)";
+    const textColor = "#cbd5e1";
+
+    const evolucaoCtx = document.getElementById("evolucaoChart");
+    if (evolucaoCtx) {
+        new Chart(evolucaoCtx, {
+            type: "line",
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: "Receitas",
+                        data: receitas,
+                        borderColor: "#22c55e",
+                        backgroundColor: "rgba(34, 197, 94, 0.12)",
+                        tension: 0.35,
+                        fill: false
+                    },
+                    {
+                        label: "Despesas",
+                        data: despesas,
+                        borderColor: "#ef4444",
+                        backgroundColor: "rgba(239, 68, 68, 0.12)",
+                        tension: 0.35,
+                        fill: false
+                    },
+                    {
+                        label: "Saldo",
+                        data: saldo,
+                        borderColor: "#8b5cf6",
+                        backgroundColor: "rgba(139, 92, 246, 0.16)",
+                        tension: 0.35,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: textColor,
+                            usePointStyle: true,
+                            pointStyle: "rectRounded"
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: textColor },
+                        grid: { color: gridColor }
+                    },
+                    y: {
+                        ticks: { color: textColor },
+                        grid: { color: gridColor }
+                    }
+                }
+            }
+        });
+    }
+
+    const categoriasCtx = document.getElementById("categoriasChart");
+    if (categoriasCtx) {
+        new Chart(categoriasCtx, {
+            type: "doughnut",
+            data: {
+                labels: categorias,
+                datasets: [{
+                    data: categoriasTotais,
+                    backgroundColor: ["#6d5dfc", "#23d18b", "#fbbf24", "#f43f5e", "#38bdf8", "#94a3b8"],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: "62%",
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

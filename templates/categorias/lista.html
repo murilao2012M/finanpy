@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero-panel mb-4">
+    <div>
+        <span class="eyebrow">Organização</span>
+        <h1 class="page-title">Categorias</h1>
+        <p class="page-subtitle">Organize receitas e despesas por grupos claros e reutilizáveis.</p>
+    </div>
+    <a href="{% url 'criar_categoria' %}" class="btn btn-premium">
+        <i class="fa-solid fa-plus"></i>
+        Nova categoria
+    </a>
+</section>
+
+<section class="card-modern">
+    <div class="card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Lista de categorias</h2>
+                <p class="panel-subtitle">Controle simples para classificar tudo o que entra e sai.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-dark-finance align-middle">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Tipo</th>
+                        <th>Descrição</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for categoria in categorias %}
+                        <tr>
+                            <td class="table-title">{{ categoria.nome }}</td>
+                            <td>
+                                <span class="status-pill {% if categoria.tipo == 'RECEITA' %}status-paid{% else %}status-pending{% endif %}">
+                                    {{ categoria.get_tipo_display }}
+                                </span>
+                            </td>
+                            <td class="table-subtitle">{{ categoria.descricao|default:"Sem descrição" }}</td>
+                            <td class="text-end">
+                                <a href="{% url 'editar_categoria' categoria.pk %}" class="btn btn-table-action">Editar</a>
+                                <a href="{% url 'excluir_categoria' categoria.pk %}" class="btn btn-table-action btn-table-danger">Excluir</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-secondary">Nenhuma categoria cadastrada.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

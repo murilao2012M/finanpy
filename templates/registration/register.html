@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="register-screen">
+    <section class="register-layout">
+        <div class="register-hero">
+            <div class="register-brand">
+                <span class="brand-mark register-brand-mark">
+                    <i class="fa-solid fa-chart-line"></i>
+                </span>
+                <div>
+                    <strong>FinanPy</strong>
+                    <span>Controle financeiro pessoal com visual moderno</span>
+                </div>
+            </div>
+
+            <span class="eyebrow">Comece agora</span>
+            <h1 class="register-title">Crie sua conta e entre no seu painel financeiro.</h1>
+            <p class="register-text">
+                Organize receitas, despesas, metas e cartões em um sistema claro,
+                confiável e pronto para o seu dia a dia.
+            </p>
+
+            <div class="register-points">
+                <div class="register-point">
+                    <i class="fa-solid fa-check"></i>
+                    <span>Cadastro rápido e protegido</span>
+                </div>
+                <div class="register-point">
+                    <i class="fa-solid fa-check"></i>
+                    <span>Painel completo logo após o acesso</span>
+                </div>
+                <div class="register-point">
+                    <i class="fa-solid fa-check"></i>
+                    <span>Experiência pensada para uso real</span>
+                </div>
+            </div>
+        </div>
+
+        <section class="register-card card-modern">
+            <div class="register-card-body">
+                <div class="register-card-header">
+                    <span class="auth-badge">Cadastro seguro</span>
+                    <h2 class="page-title page-title-sm text-center">Criar conta</h2>
+                    <p class="page-subtitle text-center">Preencha seus dados para acessar o FinanPy.</p>
+                </div>
+
+                <form method="post" class="register-form">
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        <div class="custom-alert custom-alert-error register-full">
+                            <span>{{ form.non_field_errors|striptags }}</span>
+                        </div>
+                    {% endif %}
+
+                    {% for field in form %}
+                        <div class="register-field {% if field.name == 'password1' or field.name == 'password2' %}register-full{% endif %}">
+                            <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}
+                                <div class="form-text register-help-text">{{ field.help_text|safe }}</div>
+                            {% endif %}
+                            {% for error in field.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+
+                    <div class="register-full">
+                        <button type="submit" class="btn btn-premium w-100 register-submit-btn">Cadastrar e entrar no painel</button>
+                    </div>
+                </form>
+
+                <div class="register-card-footer">
+                    <p class="text-center mb-0 text-secondary">
+                        Já tem conta?
+                        <a href="{% url 'login' %}" class="text-link">Entrar agora</a>
+                    </p>
+                </div>
+            </div>
+        </section>
+    </section>
+
+    <footer class="register-footer">
+        <div class="register-footer-brand">
+            <strong>FinanPy</strong>
+            <span>Seu espaço para organizar finanças com mais clareza e constância.</span>
+        </div>
+        <div class="register-footer-links">
+            <span><i class="fa-solid fa-lock"></i> Acesso protegido</span>
+            <span><i class="fa-solid fa-chart-pie"></i> Painel inteligente</span>
+            <span><i class="fa-solid fa-bullseye"></i> Metas e evolução</span>
+        </div>
+        <div class="register-footer-legal">
+            <span>Este site é propriedade do <strong>FinanPy</strong>.</span>
+            <span>© FinanPy. Todos os direitos reservados.</span>
+        </div>
+    </footer>
+</div>
+{% endblock %}

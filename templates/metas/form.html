@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-8">
+        <div class="card-modern">
+            <div class="card-body-modern p-4 p-lg-5">
+                <span class="eyebrow">Metas</span>
+                <h1 class="page-title page-title-sm">{{ titulo }}</h1>
+                <p class="page-subtitle">Defina o objetivo, o valor desejado, o que você já acumulou e o prazo que quer atingir.</p>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        {% for field in form %}
+                            <div class="{% if field.name == 'descricao' %}col-12{% else %}col-md-6{% endif %} mb-3">
+                                <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                                {{ field }}
+                                {% for error in field.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-premium">Salvar meta</button>
+                        <a href="{% url 'lista_metas' %}" class="btn btn-premium-outline">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
