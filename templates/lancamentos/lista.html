@@ -1,23 +1,38 @@
 {% extends "base.html" %}
+{% load financeiro_extras %}
 
 {% block content %}
 <section class="hero-panel mb-4">
     <div>
-        <span class="eyebrow">Central de lançamentos</span>
-        <h1 class="page-title">{{ titulo }}</h1>
-        <p class="page-subtitle">Consulte, filtre, edite e exclua seus lançamentos com leitura clara.</p>
+        <span class="eyebrow">Central De Lançamentos</span>
+        <h1 class="page-title">{{ titulo|title_pt }}</h1>
+        <p class="page-subtitle">Consulte, filtre, edite, exclua e restaure transações recentes com segurança.</p>
     </div>
     <a href="{% url 'criar_lancamento' %}" class="btn btn-premium">
         <i class="fa-solid fa-plus"></i>
-        Novo lançamento
+        Novo Lançamento
     </a>
 </section>
+
+{% if request.GET.undo %}
+    <section class="undo-delete-banner card-modern mb-4">
+        <div>
+            <strong>O arquivo será excluído em 5 segundos.</strong>
+            <span>Se foi engano, clique em Refazer antes do tempo acabar.</span>
+            <div class="undo-progress"><span></span></div>
+        </div>
+        <form method="post" action="{% url 'restaurar_lancamentos' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-premium">Refazer</button>
+        </form>
+    </section>
+{% endif %}
 
 <section class="card-modern mb-4">
     <div class="card-body-modern">
         <div class="panel-header mb-4">
             <div>
-                <h2 class="panel-title">Filtros inteligentes</h2>
+                <h2 class="panel-title">Filtros Inteligentes</h2>
                 <p class="panel-subtitle">Refine por mês, tipo, categoria e status.</p>
             </div>
         </div>
@@ -31,7 +46,7 @@
                 <select name="tipo" id="tipo" class="form-select">
                     <option value="">Todos</option>
                     {% for codigo, nome in tipos %}
-                        <option value="{{ codigo }}" {% if request.GET.tipo == codigo %}selected{% endif %}>{{ nome }}</option>
+                        <option value="{{ codigo }}" {% if request.GET.tipo == codigo %}selected{% endif %}>{{ nome|title_pt }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -41,7 +56,7 @@
                     <option value="">Todas</option>
                     {% for categoria in categorias %}
                         <option value="{{ categoria.id }}" {% if request.GET.categoria == categoria.id|stringformat:"s" %}selected{% endif %}>
-                            {{ categoria.nome }}
+                            {{ categoria.nome|title_pt }}
                         </option>
                     {% endfor %}
                 </select>
@@ -51,7 +66,7 @@
                 <select name="status" id="status" class="form-select">
                     <option value="">Todos</option>
                     {% for codigo, nome in status_opcoes %}
-                        <option value="{{ codigo }}" {% if request.GET.status == codigo %}selected{% endif %}>{{ nome }}</option>
+                        <option value="{{ codigo }}" {% if request.GET.status == codigo %}selected{% endif %}>{{ nome|title_pt }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -67,67 +82,94 @@
     <div class="card-body-modern">
         <div class="panel-header mb-4">
             <div>
-                <h2 class="panel-title">Tabela de lançamentos</h2>
-                <p class="panel-subtitle">Visual escuro com foco em leitura e ações rápidas.</p>
+                <h2 class="panel-title">Tabela De Lançamentos</h2>
+                <p class="panel-subtitle">Selecione itens para excluir em lote ou apagar tudo e começar novamente.</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <button type="submit" form="bulkDeleteForm" class="btn btn-premium-outline">Excluir Selecionados</button>
+                <button type="submit" form="bulkDeleteForm" name="apagar_tudo" value="1" class="btn btn-premium-danger">Apagar Tudo</button>
             </div>
         </div>
-        <div class="table-responsive">
-            <table class="table table-dark-finance align-middle">
-                <thead>
-                    <tr>
-                        <th>Descrição</th>
-                        <th>Tipo</th>
-                        <th>Categoria</th>
-                        <th>Status</th>
-                        <th>Forma</th>
-                        <th>Data</th>
-                        <th>Valor</th>
-                        <th class="text-end">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for lancamento in lancamentos %}
+
+        <form method="post" action="{% url 'excluir_lancamentos_selecionados' %}" id="bulkDeleteForm">
+            {% csrf_token %}
+            <div class="table-responsive">
+                <table class="table table-dark-finance align-middle">
+                    <thead>
                         <tr>
-                            <td>
-                                <div class="table-title">{{ lancamento.descricao_completa }}</div>
-                                {% if lancamento.cartao %}
-                                    <div class="table-subtitle">Cartão: {{ lancamento.cartao.nome }}</div>
-                                {% endif %}
-                                {% if lancamento.orcamento_compartilhado %}
-                                    <div class="table-subtitle">
-                                        Conjunto: {{ lancamento.orcamento_compartilhado.nome }}
-                                    </div>
-                                {% endif %}
-                            </td>
-                            <td>{{ lancamento.get_tipo_display }}</td>
-                            <td>{{ lancamento.categoria.nome }}</td>
-                            <td>
-                                {% if lancamento.status == "PAGO" %}
-                                    <span class="status-pill status-paid">{{ lancamento.get_status_display }}</span>
-                                {% elif lancamento.status == "ATRASADO" %}
-                                    <span class="status-pill status-overdue">{{ lancamento.get_status_display }}</span>
-                                {% else %}
-                                    <span class="status-pill status-pending">{{ lancamento.get_status_display }}</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ lancamento.get_forma_pagamento_display }}</td>
-                            <td>{{ lancamento.data_competencia|date:"d/m/Y" }}</td>
-                            <td class="{% if lancamento.tipo == 'RECEITA' %}text-success{% else %}text-light{% endif %}">
-                                {% if lancamento.tipo == "RECEITA" %}+{% else %}-{% endif %} R$ {{ lancamento.valor }}
-                            </td>
-                            <td class="text-end">
-                                <a href="{% url 'editar_lancamento' lancamento.pk %}" class="btn btn-table-action">Editar</a>
-                                <a href="{% url 'excluir_lancamento' lancamento.pk %}" class="btn btn-table-action btn-table-danger">Excluir</a>
-                            </td>
+                            <th>
+                                <input type="checkbox" class="form-check-input" id="selecionarTodos">
+                            </th>
+                            <th>Descrição</th>
+                            <th>Tipo</th>
+                            <th>Categoria</th>
+                            <th>Status</th>
+                            <th>Forma</th>
+                            <th>Data</th>
+                            <th>Valor</th>
+                            <th class="text-end">Ações</th>
                         </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="8" class="text-center text-secondary">Nenhum lançamento encontrado.</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody>
+                        {% for lancamento in lancamentos %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="lancamentos" value="{{ lancamento.id }}" class="form-check-input bulk-check">
+                                </td>
+                                <td>
+                                    <div class="table-title">{{ lancamento.descricao_completa|title_pt }}</div>
+                                    {% if lancamento.cartao %}
+                                        <div class="table-subtitle">Cartão: {{ lancamento.cartao.nome }}</div>
+                                    {% endif %}
+                                    {% if lancamento.orcamento_compartilhado %}
+                                        <div class="table-subtitle">Conjunto: {{ lancamento.orcamento_compartilhado.nome }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>{{ lancamento.get_tipo_display|title_pt }}</td>
+                                <td>{{ lancamento.categoria.nome|title_pt }}</td>
+                                <td>
+                                    {% if lancamento.status == "PAGO" %}
+                                        <span class="status-pill status-paid">{{ lancamento.get_status_display|title_pt }}</span>
+                                    {% elif lancamento.status == "ATRASADO" %}
+                                        <span class="status-pill status-overdue">{{ lancamento.get_status_display|title_pt }}</span>
+                                    {% else %}
+                                        <span class="status-pill status-pending">{{ lancamento.get_status_display|title_pt }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ lancamento.get_forma_pagamento_display|title_pt }}</td>
+                                <td>{{ lancamento.data_competencia|date:"d/m/Y" }}</td>
+                                <td class="{% if lancamento.tipo == 'RECEITA' %}text-success{% else %}text-light{% endif %}">
+                                    {% if lancamento.tipo == "RECEITA" %}+{% else %}-{% endif %} {{ lancamento.valor|brl }}
+                                </td>
+                                <td class="text-end">
+                                    <a href="{% url 'editar_lancamento' lancamento.pk %}" class="btn btn-table-action">Editar</a>
+                                    <a href="{% url 'excluir_lancamento' lancamento.pk %}" class="btn btn-table-action btn-table-danger">Excluir</a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-center text-secondary">Nenhum lançamento encontrado.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
     </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const selecionarTodos = document.getElementById("selecionarTodos");
+    const bulkChecks = document.querySelectorAll(".bulk-check");
+
+    if (selecionarTodos) {
+        selecionarTodos.addEventListener("change", function () {
+            bulkChecks.forEach(function (checkbox) {
+                checkbox.checked = selecionarTodos.checked;
+            });
+        });
+    }
+</script>
 {% endblock %}

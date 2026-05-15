@@ -72,6 +72,10 @@ class MercadoPagoClient:
         """Consulta os dados atualizados de uma assinatura recorrente."""
         return self._request("GET", f"/preapproval/{preapproval_id}")
 
+    def buscar_pagamento(self, payment_id: str) -> dict:
+        """Consulta um pagamento recebido pelo webhook."""
+        return self._request("GET", f"/v1/payments/{payment_id}")
+
     def cancelar_assinatura(self, preapproval_id: str) -> dict:
         """Cancela a assinatura recorrente no gateway."""
         return self._request("PUT", f"/preapproval/{preapproval_id}", {"status": "cancelled"})

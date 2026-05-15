@@ -1,7 +1,7 @@
 """Views do app financeiro."""
 
 from calendar import monthrange
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 import hashlib
 import hmac
@@ -11,16 +11,22 @@ import unicodedata
 import uuid
 
 from django.contrib import messages
-from django.contrib.auth import login, logout, update_session_auth_hash
+from django.contrib.auth import logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import LoginView
+from django.contrib.auth.models import User
+from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth.views import LoginView, PasswordResetConfirmView
 from django.conf import settings
 from django.core.cache import cache
+from django.core.mail import send_mail
 from django.db.models import Count, Q, Sum
 from django.db.models.deletion import ProtectedError
 from django.http import HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
@@ -31,6 +37,7 @@ from .forms import (
     CategoriaForm,
     ConfiguracaoUsuarioForm,
     ConviteOrcamentoForm,
+    ExcluirContaForm,
     FotoPerfilForm,
     InvestimentoForm,
     LancamentoForm,
@@ -56,6 +63,7 @@ from .models import (
     LimiteCategoriaContencao,
     MetaFinanceira,
     MembroOrcamento,
+    Notificacao,
     OrcamentoCompartilhado,
     PlanoContencao,
     PlanoUsuario,
@@ -68,16 +76,16 @@ ABREVIACOES_MESES_PT = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ag
 
 LIMITES_RECURSOS = {
     "cartoes": {
-        "titulo": "cartoes",
+        "titulo": "cartões",
         "nome": "cartoes",
         "rota": "lista_cartoes",
-        "mensagem": "O plano Freemium permite cadastrar apenas 1 cartao. Faça upgrade para o Premium e libere mais cartoes.",
+        "mensagem": "O plano Freemium permite cadastrar apenas 1 cartão. Faça upgrade para o Premium e libere mais cartões.",
     },
     "metas": {
         "titulo": "metas",
         "nome": "metas",
         "rota": "lista_metas",
-        "mensagem": "O plano Freemium permite cadastrar ate 2 metas. Faça upgrade para o Premium e libere metas ilimitadas.",
+        "mensagem": "O plano Freemium permite cadastrar até 2 metas. Faça upgrade para o Premium e libere metas ilimitadas.",
     },
     "investimentos": {
         "titulo": "investimentos",
@@ -89,20 +97,20 @@ LIMITES_RECURSOS = {
 
 RECURSOS_PREMIUM = {
     "ia": {
-        "nome": "Analise financeira com IA",
-        "mensagem": "A Analise IA faz parte do Premium. Finalize o upgrade para liberar esse recurso.",
+        "nome": "Análise Financeira com IA",
+        "mensagem": "A Análise IA faz parte do Premium. Finalize o upgrade para liberar esse recurso.",
     },
     "simulador": {
-        "nome": "Simulador de Decisoes",
-        "mensagem": "O Simulador de Decisoes e um recurso Premium. Faca upgrade para liberar as simulacoes.",
+        "nome": "Simulador de Decisões",
+        "mensagem": "O Simulador de Decisões é um recurso Premium. Faça upgrade para liberar as simulações.",
     },
     "contencao": {
         "nome": "Modo Anti-descontrole",
-        "mensagem": "O Modo Anti-descontrole e um recurso Premium. Faca upgrade para ativar um plano de contencao.",
+        "mensagem": "O Modo Anti-descontrole é um recurso Premium. Faça upgrade para ativar um plano de contenção.",
     },
     "familia": {
-        "nome": "Modo Casal/Familia",
-        "mensagem": "O Modo Casal/Familia e um recurso Premium. Faca upgrade para compartilhar orcamentos.",
+        "nome": "Modo Casal/Família",
+        "mensagem": "O Modo Casal/Família é um recurso Premium. Faça upgrade para compartilhar orçamentos.",
     },
 }
 
@@ -164,6 +172,20 @@ def obter_plano_usuario(usuario):
     """Retorna o plano do usuario, criando o freemium se ainda nao existir."""
     plano_usuario, _ = PlanoUsuario.objects.get_or_create(usuario=usuario)
     return plano_usuario
+
+
+def criar_notificacao(usuario, titulo, mensagem, tipo=Notificacao.TIPO_INFO, link=""):
+    """Registra uma notificação simples para aparecer no sininho do usuário."""
+    if not usuario or not usuario.is_authenticated:
+        return None
+
+    return Notificacao.objects.create(
+        usuario=usuario,
+        titulo=titulo,
+        mensagem=mensagem,
+        tipo=tipo,
+        link=link,
+    )
 
 
 def limpar_payload_auditavel(payload):
@@ -355,6 +377,14 @@ def sincronizar_plano_com_gateway(plano_usuario):
                 "status_atual": plano_usuario.status,
             },
         )
+        if plano_usuario.eh_premium:
+            criar_notificacao(
+                plano_usuario.usuario,
+                "Pagamento Recebido",
+                "Seu Plano Premium está ativo. A Análise Financeira com IA foi liberada.",
+                Notificacao.TIPO_SUCESSO,
+                reverse("configuracoes"),
+            )
     return plano_usuario
 
 
@@ -876,7 +906,17 @@ def calcular_metas_inteligentes(usuario, metas):
         restante = meta.valor_restante
         dias_restantes = max((meta.data_limite - hoje).days, 0)
         semanas_restantes = max(Decimal(dias_restantes) / Decimal("7"), Decimal("1"))
-        valor_semanal = restante / semanas_restantes if restante > 0 else Decimal("0.00")
+        valor_semanal_necessario = restante / semanas_restantes if restante > 0 else Decimal("0.00")
+
+        if meta.valor_semanal_planejado > 0:
+            valor_semanal = meta.valor_semanal_planejado
+        elif meta.estrategia == MetaFinanceira.ESTRATEGIA_CONSERVADORA:
+            valor_semanal = valor_semanal_necessario * Decimal("0.45")
+        elif meta.estrategia == MetaFinanceira.ESTRATEGIA_SUAVE:
+            valor_semanal = valor_semanal_necessario * Decimal("0.70")
+        else:
+            valor_semanal = valor_semanal_necessario
+
         valor_mensal = valor_semanal * Decimal("4.33")
         ritmo_sugerido = valor_semanal if valor_semanal > 0 else Decimal("0.00")
         semanas_estimadas = Decimal("0.00")
@@ -894,29 +934,31 @@ def calcular_metas_inteligentes(usuario, metas):
                 {
                     "categoria": item["categoria__nome"] or "Sem categoria",
                     "valor": corte_sugerido,
-                    "mensagem": f"Reduzir cerca de R$ {corte_sugerido:.2f} em {item['categoria__nome'] or 'Sem categoria'} neste mes.",
+                    "mensagem": f"Reduzir cerca de R$ {corte_sugerido:.2f} em {item['categoria__nome'] or 'Sem categoria'} neste mês.",
                 }
             )
 
         if restante <= 0:
-            resumo = "Meta concluida. Mantenha o habito e direcione novos aportes para o proximo objetivo."
+            resumo = "Meta concluída. Mantenha o hábito e direcione novos aportes para o próximo objetivo."
         elif dias_restantes == 0:
             resumo = "O prazo termina hoje. Considere ajustar a data limite ou fazer um aporte final."
-        elif valor_semanal <= Decimal("50.00"):
-            resumo = "Meta saudavel. Pequenos aportes semanais ja mantem o objetivo no caminho."
-        elif valor_semanal <= Decimal("200.00"):
-            resumo = "Meta possivel, mas precisa de consistencia semanal e cortes leves."
+        elif meta.estrategia == MetaFinanceira.ESTRATEGIA_CONSERVADORA:
+            resumo = "Meta conservadora. O prazo fica mais confortável e exige menos pressão semanal."
+        elif meta.estrategia == MetaFinanceira.ESTRATEGIA_SUAVE:
+            resumo = "Meta suave. O plano equilibra consistência e tranquilidade no orçamento."
         else:
-            resumo = "Meta agressiva. Vale aumentar o prazo ou reduzir gastos maiores para evitar pressao no orcamento."
+            resumo = "Meta agressiva. Exige aportes maiores e pede atenção para não pressionar o orçamento."
 
         sugestoes[meta.id] = {
             "dias_restantes": dias_restantes,
             "semanas_restantes": round(float(semanas_restantes), 1),
             "valor_semanal": valor_semanal,
+            "valor_semanal_necessario": valor_semanal_necessario,
             "valor_mensal": valor_mensal,
             "semanas_estimadas": round(float(semanas_estimadas), 1),
             "cortes": cortes,
             "resumo": resumo,
+            "estrategia": meta.get_estrategia_display(),
         }
 
     return sugestoes
@@ -1053,24 +1095,117 @@ def pagina_inicial(request):
     A página inicial pública do produto sempre apresenta o fluxo de entrada.
     Assim, quem abrir o site cai primeiro no cadastro.
     """
-    return redirect("login")
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+    return redirect("registrar_usuario")
+
+
+def chave_login_tentativas(request):
+    """Monta uma chave estável para controlar tentativas de login por IP e usuário."""
+    username = request.POST.get("username", "").strip().lower() or "sem-usuario"
+    ip = request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR", "unknown")).split(",")[0]
+    return f"finanpy:login:{ip}:{username}"
+
+
+def enviar_email_confirmacao_cadastro(request, usuario):
+    """Envia o link de ativação da conta para o e-mail informado no cadastro."""
+    uid = urlsafe_base64_encode(force_bytes(usuario.pk))
+    token = default_token_generator.make_token(usuario)
+    link_ativacao = request.build_absolute_uri(
+        reverse("ativar_conta", kwargs={"uidb64": uid, "token": token})
+    )
+
+    assunto = "Confirme seu cadastro no FinanPy"
+    mensagem = (
+        f"Olá, {usuario.first_name or usuario.username}!\n\n"
+        "Seu cadastro no FinanPy foi criado com sucesso.\n"
+        "Para ativar sua conta e acessar o painel, clique no link abaixo:\n\n"
+        f"{link_ativacao}\n\n"
+        "Se você não criou esta conta, ignore este e-mail."
+    )
+    send_mail(assunto, mensagem, settings.DEFAULT_FROM_EMAIL, [usuario.email], fail_silently=False)
 
 
 class EntrarUsuarioView(LoginView):
-    """Tela de login com formulário customizado e layout do projeto."""
+    """Tela de login com formulário customizado, bloqueio temporário e layout do projeto."""
 
     template_name = "registration/login.html"
     authentication_form = LoginUsuarioForm
     redirect_authenticated_user = True
+    limite_tentativas = 5
+    tempo_bloqueio_segundos = 30 * 60
+
+    def dispatch(self, request, *args, **kwargs):
+        """Bloqueia novas tentativas quando o usuário erra cinco vezes."""
+        if request.method == "POST":
+            chave = chave_login_tentativas(request)
+            if cache.get(f"{chave}:bloqueado"):
+                messages.error(
+                    request,
+                    "Muitas tentativas incorretas. Redefina sua senha ou tente novamente em alguns minutos.",
+                )
+                return redirect("password_reset")
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        """Limpa a contagem de erros quando o login é concluído com sucesso."""
+        chave = chave_login_tentativas(self.request)
+        cache.delete(chave)
+        cache.delete(f"{chave}:bloqueado")
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        """Conta erros de login e direciona para recuperação de senha ao atingir o limite."""
+        chave = chave_login_tentativas(self.request)
+        tentativas = cache.get(chave, 0) + 1
+        cache.set(chave, tentativas, self.tempo_bloqueio_segundos)
+        restantes = max(self.limite_tentativas - tentativas, 0)
+
+        if tentativas >= self.limite_tentativas:
+            cache.set(f"{chave}:bloqueado", True, self.tempo_bloqueio_segundos)
+            messages.error(
+                self.request,
+                "Você atingiu 5 tentativas incorretas. Use a recuperação de senha para liberar o acesso.",
+            )
+            return redirect("password_reset")
+
+        messages.warning(
+            self.request,
+            f"Login não realizado. Você ainda tem {restantes} tentativa(s) antes da recuperação obrigatória.",
+        )
+        return super().form_invalid(form)
+
+
+class ConfirmarRedefinicaoSenhaView(PasswordResetConfirmView):
+    """Redefine a senha e envia confirmação por e-mail ao usuário."""
+
+    template_name = "registration/password_reset_confirm.html"
+
+    def form_valid(self, form):
+        usuario = form.user
+        resposta = super().form_valid(form)
+        if usuario.email:
+            send_mail(
+                "Senha alterada no FinanPy",
+                (
+                    f"Olá, {usuario.first_name or usuario.username}!\n\n"
+                    "Sua senha do FinanPy foi alterada com sucesso.\n"
+                    "Se você não fez essa alteração, redefina sua senha imediatamente."
+                ),
+                settings.DEFAULT_FROM_EMAIL,
+                [usuario.email],
+                fail_silently=True,
+            )
+        return resposta
 
 
 @require_POST
 def sair_usuario(request):
     """
-    Encerra a sessao do usuario com redirecionamento previsivel.
+    Encerra a sessão do usuário com redirecionamento previsível.
 
     Usamos apenas POST para evitar logout acidental por link, crawler ou imagem
-    externa. O token CSRF confirma que a acao saiu da interface do FinanPy.
+    externa. O token CSRF confirma que a ação saiu da interface do FinanPy.
     """
     if request.user.is_authenticated:
         logout(request)
@@ -1080,22 +1215,48 @@ def sair_usuario(request):
 
 
 def registrar_usuario(request):
-    """Permite criar um usuário e já efetuar login automaticamente."""
+    """Cria uma conta inativa e envia confirmação por e-mail antes do primeiro acesso."""
     if request.user.is_authenticated:
         return redirect("dashboard")
 
     if request.method == "POST":
         form = RegistroUsuarioForm(request.POST)
         if form.is_valid():
-            usuario = form.save()
-            login(request, usuario)
-            messages.success(request, "Conta criada com sucesso. Bem-vindo ao FinanPy.")
-            return redirect("dashboard")
+            usuario = form.save(commit=False)
+            usuario.is_active = False
+            usuario.email = form.cleaned_data["email"].strip().lower()
+            usuario.save()
+            enviar_email_confirmacao_cadastro(request, usuario)
+            messages.success(
+                request,
+                "Cadastro criado com sucesso. Enviamos um e-mail de confirmação para ativar sua conta.",
+            )
+            return redirect("login")
         messages.error(request, "Revise os dados informados para concluir seu cadastro.")
     else:
         form = RegistroUsuarioForm()
 
     return render(request, "registration/register.html", {"form": form})
+
+
+def ativar_conta(request, uidb64, token):
+    """Ativa a conta depois que o usuário clica no link enviado por e-mail."""
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        usuario = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        usuario = None
+
+    if usuario and default_token_generator.check_token(usuario, token):
+        usuario.is_active = True
+        usuario.save(update_fields=["is_active"])
+        PlanoUsuario.objects.get_or_create(usuario=usuario)
+        ConfiguracaoUsuario.objects.get_or_create(usuario=usuario)
+        messages.success(request, "E-mail confirmado com sucesso. Agora você já pode entrar no FinanPy.")
+        return redirect("login")
+
+    messages.error(request, "Link de confirmação inválido ou expirado. Solicite um novo cadastro ou redefinição.")
+    return redirect("registrar_usuario")
 
 
 @login_required
@@ -1150,6 +1311,33 @@ def perfil_usuario(request):
         "configuracao_usuario": configuracao,
     }
     return render(request, "perfil/painel.html", contexto)
+
+
+@login_required
+@require_POST
+def excluir_conta_usuario(request):
+    """Exclui definitivamente a conta e todos os dados ligados ao usuário."""
+    form = ExcluirContaForm(request.user, request.POST, prefix="excluir")
+
+    if not form.is_valid():
+        for erros in form.errors.values():
+            for erro in erros:
+                messages.error(request, erro)
+        return redirect("configuracoes")
+
+    usuario = request.user
+    logout(request)
+    usuario.delete()
+    messages.success(request, "Sua conta e todos os dados foram excluídos definitivamente.")
+    return redirect("login")
+
+
+@login_required
+@require_POST
+def marcar_notificacoes_lidas(request):
+    """Marca os alertas do sininho como lidos."""
+    Notificacao.objects.filter(usuario=request.user, lida=False).update(lida=True)
+    return redirect(request.POST.get("proximo") or "dashboard")
 
 
 @login_required
@@ -1473,6 +1661,13 @@ def criar_categoria(request):
             categoria = form.save(commit=False)
             categoria.usuario = request.user
             categoria.save()
+            criar_notificacao(
+                request.user,
+                "Categoria Criada",
+                f"A categoria {categoria.nome} foi adicionada.",
+                Notificacao.TIPO_SUCESSO,
+                reverse("lista_categorias"),
+            )
             messages.success(request, "Categoria criada com sucesso.")
             return redirect("lista_categorias")
     else:
@@ -1489,7 +1684,14 @@ def editar_categoria(request, pk):
     if request.method == "POST":
         form = CategoriaForm(request.POST, instance=categoria)
         if form.is_valid():
-            form.save()
+            categoria = form.save()
+            criar_notificacao(
+                request.user,
+                "Categoria Atualizada",
+                f"A categoria {categoria.nome} foi atualizada.",
+                Notificacao.TIPO_INFO,
+                reverse("lista_categorias"),
+            )
             messages.success(request, "Categoria atualizada com sucesso.")
             return redirect("lista_categorias")
     else:
@@ -1504,8 +1706,16 @@ def excluir_categoria(request, pk):
     categoria = obter_objeto_do_usuario(Categoria, request.user, pk)
 
     if request.method == "POST":
+        nome_categoria = categoria.nome
         try:
             categoria.delete()
+            criar_notificacao(
+                request.user,
+                "Categoria Excluída",
+                f"A categoria {nome_categoria} foi removida.",
+                Notificacao.TIPO_ALERTA,
+                reverse("lista_categorias"),
+            )
             messages.success(request, "Categoria excluída com sucesso.")
         except ProtectedError:
             messages.error(
@@ -1537,6 +1747,13 @@ def criar_cartao(request):
             cartao = form.save(commit=False)
             cartao.usuario = request.user
             cartao.save()
+            criar_notificacao(
+                request.user,
+                "Cartão Criado",
+                f"O cartão {cartao.nome} foi cadastrado.",
+                Notificacao.TIPO_SUCESSO,
+                reverse("lista_cartoes"),
+            )
             messages.success(request, "Cartão cadastrado com sucesso.")
             return redirect("lista_cartoes")
     else:
@@ -1553,7 +1770,14 @@ def editar_cartao(request, pk):
     if request.method == "POST":
         form = CartaoCreditoForm(request.POST, instance=cartao)
         if form.is_valid():
-            form.save()
+            cartao = form.save()
+            criar_notificacao(
+                request.user,
+                "Cartão Atualizado",
+                f"O cartão {cartao.nome} foi atualizado.",
+                Notificacao.TIPO_INFO,
+                reverse("lista_cartoes"),
+            )
             messages.success(request, "Cartão atualizado com sucesso.")
             return redirect("lista_cartoes")
     else:
@@ -1568,7 +1792,15 @@ def excluir_cartao(request, pk):
     cartao = obter_objeto_do_usuario(CartaoCredito, request.user, pk)
 
     if request.method == "POST":
+        nome_cartao = cartao.nome
         cartao.delete()
+        criar_notificacao(
+            request.user,
+            "Cartão Excluído",
+            f"O cartão {nome_cartao} foi removido.",
+            Notificacao.TIPO_ALERTA,
+            reverse("lista_cartoes"),
+        )
         messages.success(request, "Cartão excluído com sucesso.")
         return redirect("lista_cartoes")
 
@@ -1577,13 +1809,38 @@ def excluir_cartao(request, pk):
 
 @login_required
 def lista_investimentos(request):
-    """Lista os investimentos cadastrados pelo usuário."""
-    investimentos = Investimento.objects.filter(usuario=request.user).order_by("status", "-data_aplicacao", "-id")
+    """Lista os investimentos cadastrados pelo usuário, com filtros e dados para gráfico."""
+    investimentos = Investimento.objects.filter(usuario=request.user)
+
+    data_inicio = request.GET.get("data_inicio")
+    data_fim = request.GET.get("data_fim")
+    tipo_filtro = request.GET.get("tipo")
+
+    if data_inicio:
+        investimentos = investimentos.filter(data_aplicacao__gte=data_inicio)
+
+    if data_fim:
+        investimentos = investimentos.filter(data_aplicacao__lte=data_fim)
+
+    if tipo_filtro:
+        investimentos = investimentos.filter(tipo=tipo_filtro)
+
+    investimentos = investimentos.order_by("status", "-data_aplicacao", "-id")
     investimentos_ativos = investimentos.filter(status=Investimento.STATUS_ATIVO)
 
     total_aplicado = somar_campo(investimentos_ativos, "valor_aplicado")
     total_atual = somar_campo(investimentos_ativos, "valor_atual")
     rentabilidade_total = total_atual - total_aplicado
+    mapa_tipos = dict(Investimento.TIPOS)
+    resumo_por_tipo = list(
+        investimentos_ativos.values("tipo")
+        .annotate(total=Sum("valor_atual"), quantidade=Count("id"))
+        .order_by("-total")
+    )
+    for item in resumo_por_tipo:
+        item["tipo_label"] = mapa_tipos.get(item["tipo"], item["tipo"])
+    grafico_labels = [mapa_tipos.get(item["tipo"], item["tipo"]) for item in resumo_por_tipo]
+    grafico_valores = [float(item["total"] or Decimal("0.00")) for item in resumo_por_tipo]
 
     contexto = {
         "investimentos": investimentos,
@@ -1592,6 +1849,13 @@ def lista_investimentos(request):
         "total_aplicado": total_aplicado,
         "total_atual": total_atual,
         "rentabilidade_total": rentabilidade_total,
+        "tipos_investimento": Investimento.TIPOS,
+        "tipo_filtro": tipo_filtro,
+        "data_inicio": data_inicio,
+        "data_fim": data_fim,
+        "resumo_por_tipo": resumo_por_tipo,
+        "grafico_labels": json.dumps(grafico_labels),
+        "grafico_valores": json.dumps(grafico_valores),
     }
     return render(request, "investimentos/lista.html", contexto)
 
@@ -1609,6 +1873,13 @@ def criar_investimento(request):
             investimento = form.save(commit=False)
             investimento.usuario = request.user
             investimento.save()
+            criar_notificacao(
+                request.user,
+                "Investimento Registrado",
+                f"Você adicionou {investimento.nome} à sua carteira.",
+                Notificacao.TIPO_SUCESSO,
+                reverse("lista_investimentos"),
+            )
             messages.success(request, "Investimento cadastrado com sucesso.")
             return redirect("lista_investimentos")
     else:
@@ -1625,7 +1896,14 @@ def editar_investimento(request, pk):
     if request.method == "POST":
         form = InvestimentoForm(request.POST, instance=investimento)
         if form.is_valid():
-            form.save()
+            investimento = form.save()
+            criar_notificacao(
+                request.user,
+                "Investimento Atualizado",
+                f"As informações de {investimento.nome} foram atualizadas.",
+                Notificacao.TIPO_INFO,
+                reverse("lista_investimentos"),
+            )
             messages.success(request, "Investimento atualizado com sucesso.")
             return redirect("lista_investimentos")
     else:
@@ -1644,7 +1922,15 @@ def excluir_investimento(request, pk):
     investimento = obter_objeto_do_usuario(Investimento, request.user, pk)
 
     if request.method == "POST":
+        nome_investimento = investimento.nome
         investimento.delete()
+        criar_notificacao(
+            request.user,
+            "Investimento Excluído",
+            f"O investimento {nome_investimento} foi removido.",
+            Notificacao.TIPO_ALERTA,
+            reverse("lista_investimentos"),
+        )
         messages.success(request, "Investimento excluído com sucesso.")
         return redirect("lista_investimentos")
 
@@ -1666,6 +1952,7 @@ def configuracoes(request):
     perfil_form = PerfilUsuarioForm(instance=request.user, prefix="perfil")
     preferencias_form = ConfiguracaoUsuarioForm(instance=configuracao, prefix="preferencias")
     senha_form = AlterarSenhaPerfilForm(request.user, prefix="senha")
+    excluir_conta_form = ExcluirContaForm(request.user, prefix="excluir")
 
     if request.method == "POST":
         if "salvar_perfil" in request.POST:
@@ -1701,6 +1988,7 @@ def configuracoes(request):
         "perfil_form": perfil_form,
         "preferencias_form": preferencias_form,
         "senha_form": senha_form,
+        "excluir_conta_form": excluir_conta_form,
         "configuracao_usuario": configuracao,
         "plano_usuario": plano_usuario,
         "ultima_analise_ia": ultima_analise_ia,
@@ -1991,20 +2279,54 @@ def webhook_mercado_pago(request):
     request_id = request.headers.get("x-request-id", "")
     evento_id = str(payload.get("id") or request.GET.get("id") or request_id or "")
     tipos_assinatura = {"subscription_preapproval", "preapproval"}
+    tipos_pagamento = {"payment", "payments"}
 
     if not validar_assinatura_webhook_mercado_pago(request, data_id):
         return JsonResponse({"ok": False, "erro": "assinatura_invalida"}, status=400)
 
-    plano_usuario = (
-        PlanoUsuario.objects.filter(mercado_pago_preapproval_id=data_id).first()
-        if data_id and tipo in tipos_assinatura
-        else None
-    )
+    plano_usuario = None
+    pagamento_payload = {}
+
+    if data_id and tipo in tipos_assinatura:
+        plano_usuario = PlanoUsuario.objects.filter(mercado_pago_preapproval_id=data_id).first()
+    elif data_id and tipo in tipos_pagamento:
+        try:
+            pagamento_payload = MercadoPagoClient().buscar_pagamento(data_id)
+        except MercadoPagoErro as erro:
+            registrar_evento_assinatura(
+                tipo=EventoAssinatura.TIPO_ERRO,
+                origem=EventoAssinatura.ORIGEM_MERCADO_PAGO,
+                mercado_pago_evento_id=evento_id,
+                mercado_pago_tipo=tipo,
+                mercado_pago_acao=acao,
+                mensagem=f"Falha ao consultar pagamento Mercado Pago: {erro}",
+                payload=payload,
+            )
+            return JsonResponse({"ok": False, "erro": str(erro)}, status=500)
+
+        metadata = pagamento_payload.get("metadata") or {}
+        referencia_pagamento = str(pagamento_payload.get("external_reference") or metadata.get("external_reference") or "")
+        preapproval_pagamento = str(
+            pagamento_payload.get("preapproval_id")
+            or metadata.get("preapproval_id")
+            or metadata.get("subscription_id")
+            or ""
+        )
+
+        plano_usuario = (
+            PlanoUsuario.objects.filter(mercado_pago_preapproval_id=preapproval_pagamento).first()
+            if preapproval_pagamento
+            else None
+        )
+        if not plano_usuario and referencia_pagamento:
+            plano_usuario = PlanoUsuario.objects.filter(
+                mercado_pago_referencia_externa=referencia_pagamento
+            ).first()
     registrar_evento_assinatura(
         tipo=EventoAssinatura.TIPO_WEBHOOK_RECEBIDO,
         origem=EventoAssinatura.ORIGEM_MERCADO_PAGO,
         plano=plano_usuario,
-        mercado_pago_preapproval_id=data_id if tipo in tipos_assinatura else "",
+        mercado_pago_preapproval_id=data_id if tipo in tipos_assinatura else getattr(plano_usuario, "mercado_pago_preapproval_id", ""),
         mercado_pago_evento_id=evento_id,
         mercado_pago_tipo=tipo,
         mercado_pago_acao=acao,
@@ -2014,9 +2336,50 @@ def webhook_mercado_pago(request):
         payload={
             "query_params": request.GET.dict(),
             "body": payload,
+            "pagamento": pagamento_payload,
             "x_request_id": request_id,
         },
     )
+
+    if tipo in tipos_pagamento and plano_usuario:
+        status_pagamento = str(pagamento_payload.get("status") or "")
+        if status_pagamento in {"approved", "authorized"}:
+            plano_usuario.mercado_pago_status = "authorized"
+            plano_usuario.ultima_sincronizacao_gateway = timezone.now()
+            plano_usuario.ativar_premium()
+            plano_usuario.save()
+            registrar_evento_assinatura(
+                tipo=EventoAssinatura.TIPO_PREMIUM_ATIVADO,
+                origem=EventoAssinatura.ORIGEM_MERCADO_PAGO,
+                plano=plano_usuario,
+                mercado_pago_preapproval_id=plano_usuario.mercado_pago_preapproval_id,
+                mercado_pago_evento_id=evento_id,
+                mercado_pago_tipo=tipo,
+                mercado_pago_acao=acao,
+                status_gateway=status_pagamento,
+                referencia_externa=plano_usuario.mercado_pago_referencia_externa,
+                valor=plano_usuario.valor_mensal,
+                mensagem="Pagamento recebido e Premium ativado automaticamente.",
+                payload=pagamento_payload,
+            )
+            criar_notificacao(
+                plano_usuario.usuario,
+                "Pagamento Recebido",
+                "Seu Plano Premium está ativo. Todos os recursos foram liberados.",
+                Notificacao.TIPO_SUCESSO,
+                reverse("configuracoes"),
+            )
+        return JsonResponse(
+            {
+                "ok": True,
+                "tipo": tipo,
+                "acao": acao,
+                "pagamento": data_id,
+                "status_pagamento": status_pagamento,
+                "plano": plano_usuario.nome_plano,
+            },
+            status=200,
+        )
 
     if tipo not in tipos_assinatura:
         return JsonResponse(
@@ -2092,6 +2455,13 @@ def criar_meta(request):
             meta = form.save(commit=False)
             meta.usuario = request.user
             meta.save()
+            criar_notificacao(
+                request.user,
+                "Meta Criada",
+                f"A meta {meta.titulo} foi criada com estratégia {meta.get_estrategia_display()}.",
+                Notificacao.TIPO_SUCESSO,
+                reverse("lista_metas"),
+            )
             messages.success(request, "Meta criada com sucesso.")
             return redirect("lista_metas")
     else:
@@ -2108,7 +2478,14 @@ def editar_meta(request, pk):
     if request.method == "POST":
         form = MetaFinanceiraForm(request.POST, instance=meta)
         if form.is_valid():
-            form.save()
+            meta = form.save()
+            criar_notificacao(
+                request.user,
+                "Meta Atualizada",
+                f"A meta {meta.titulo} foi atualizada.",
+                Notificacao.TIPO_INFO,
+                reverse("lista_metas"),
+            )
             messages.success(request, "Meta atualizada com sucesso.")
             return redirect("lista_metas")
     else:
@@ -2123,11 +2500,38 @@ def excluir_meta(request, pk):
     meta = obter_objeto_do_usuario(MetaFinanceira, request.user, pk)
 
     if request.method == "POST":
+        titulo_meta = meta.titulo
         meta.delete()
+        criar_notificacao(
+            request.user,
+            "Meta Excluída",
+            f"A meta {titulo_meta} foi removida.",
+            Notificacao.TIPO_ALERTA,
+            reverse("lista_metas"),
+        )
         messages.success(request, "Meta excluída com sucesso.")
         return redirect("lista_metas")
 
     return render(request, "confirm_delete.html", {"objeto": meta, "titulo": "Excluir meta"})
+
+
+@login_required
+@require_POST
+def concluir_meta(request, pk):
+    """Marca uma meta como alcançada pelo usuário."""
+    meta = obter_objeto_do_usuario(MetaFinanceira, request.user, pk)
+    meta.valor_atual = meta.valor_alvo
+    meta.status = MetaFinanceira.STATUS_CONCLUIDA
+    meta.save()
+    criar_notificacao(
+        request.user,
+        "Meta Alcançada",
+        f"Parabéns! A meta {meta.titulo} foi marcada como alcançada.",
+        Notificacao.TIPO_SUCESSO,
+        reverse("lista_metas"),
+    )
+    messages.success(request, "Meta marcada como alcançada. Parabéns pela conquista!")
+    return redirect("lista_metas")
 
 
 def aplicar_filtros_lancamentos(queryset, request):
@@ -2265,6 +2669,8 @@ def criar_parcelas(lancamento_base):
             categoria=lancamento_base.categoria,
             data_competencia=data_competencia,
             data_vencimento=data_vencimento,
+            data_pagamento=lancamento_base.data_pagamento,
+            status=lancamento_base.status,
             forma_pagamento=lancamento_base.forma_pagamento,
             observacao=lancamento_base.observacao,
             cartao=lancamento_base.cartao,
@@ -2289,12 +2695,27 @@ def criar_lancamento(request):
             if lancamento.compra_parcelada and lancamento.total_parcelas > 1:
                 lancamento.grupo_parcelas = uuid.uuid4()
                 criar_parcelas(lancamento)
+                criar_notificacao(
+                    request.user,
+                    "Compra Parcelada Registrada",
+                    f"{lancamento.total_parcelas} parcelas de {lancamento.descricao} foram cadastradas.",
+                    Notificacao.TIPO_SUCESSO,
+                    reverse("lista_lancamentos"),
+                )
                 messages.success(request, "Compra parcelada cadastrada com sucesso.")
             else:
                 lancamento.save()
+                criar_notificacao(
+                    request.user,
+                    "Transação Registrada",
+                    f"{lancamento.descricao_completa} foi adicionada aos seus lançamentos.",
+                    Notificacao.TIPO_SUCESSO,
+                    reverse("lista_lancamentos"),
+                )
                 messages.success(request, "Lançamento criado com sucesso.")
 
             return redirect("lista_lancamentos")
+        messages.error(request, "Não foi possível salvar a transação. Revise os campos destacados.")
     else:
         form = LancamentoForm(usuario=request.user, familia_liberada=familia_liberada)
 
@@ -2323,8 +2744,16 @@ def editar_lancamento(request, pk):
                 lancamento_editado.compra_parcelada = True
 
             lancamento_editado.save()
+            criar_notificacao(
+                request.user,
+                "Transação Atualizada",
+                f"{lancamento_editado.descricao_completa} foi atualizada.",
+                Notificacao.TIPO_INFO,
+                reverse("lista_lancamentos"),
+            )
             messages.success(request, "Lançamento atualizado com sucesso.")
             return redirect("lista_lancamentos")
+        messages.error(request, "Não foi possível atualizar a transação. Revise os campos destacados.")
     else:
         form = LancamentoForm(instance=lancamento, usuario=request.user, familia_liberada=familia_liberada)
 
@@ -2335,22 +2764,157 @@ def editar_lancamento(request, pk):
     )
 
 
+def serializar_lancamento_para_restauracao(lancamento):
+    """Transforma um lançamento em dados seguros para restaurar por até 5 segundos."""
+    return {
+        "tipo": lancamento.tipo,
+        "escopo": lancamento.escopo,
+        "orcamento_compartilhado_id": lancamento.orcamento_compartilhado_id,
+        "descricao": lancamento.descricao,
+        "valor": str(lancamento.valor),
+        "categoria_id": lancamento.categoria_id,
+        "data_competencia": lancamento.data_competencia.isoformat(),
+        "data_vencimento": lancamento.data_vencimento.isoformat(),
+        "data_pagamento": lancamento.data_pagamento.isoformat() if lancamento.data_pagamento else None,
+        "status": lancamento.status,
+        "forma_pagamento": lancamento.forma_pagamento,
+        "observacao": lancamento.observacao,
+        "cartao_id": lancamento.cartao_id,
+        "compra_parcelada": lancamento.compra_parcelada,
+        "parcela_atual": lancamento.parcela_atual,
+        "total_parcelas": lancamento.total_parcelas,
+        "grupo_parcelas": str(lancamento.grupo_parcelas) if lancamento.grupo_parcelas else None,
+    }
+
+
+def guardar_lancamentos_para_restauracao(request, lancamentos):
+    """Salva uma cópia temporária na sessão para o botão Refazer."""
+    request.session["undo_lancamentos"] = {
+        "expira_em": (timezone.now() + timedelta(seconds=5)).isoformat(),
+        "itens": [serializar_lancamento_para_restauracao(lancamento) for lancamento in lancamentos],
+    }
+    request.session.modified = True
+
+
 @login_required
 def excluir_lancamento(request, pk):
     """Exclui um lançamento ou uma parcela específica."""
     lancamento = obter_objeto_do_usuario(Lancamento, request.user, pk)
 
     if request.method == "POST":
+        guardar_lancamentos_para_restauracao(request, [lancamento])
+        descricao = lancamento.descricao_completa
         lancamento.delete()
-        messages.success(request, "Lançamento excluído com sucesso.")
-        return redirect("lista_lancamentos")
+        criar_notificacao(
+            request.user,
+            "Transação Excluída",
+            f"{descricao} foi removida. Você teve 5 segundos para restaurar pela tela de lançamentos.",
+            Notificacao.TIPO_ALERTA,
+            reverse("lista_lancamentos"),
+        )
+        messages.success(request, "Lançamento excluído. Você pode clicar em Refazer por 5 segundos.")
+        return redirect(f"{reverse('lista_lancamentos')}?undo=1")
 
     return render(request, "confirm_delete.html", {"objeto": lancamento, "titulo": "Excluir lançamento"})
 
 
 @login_required
+@require_POST
+def excluir_lancamentos_selecionados(request):
+    """Exclui várias transações de uma vez e permite desfazer por 5 segundos."""
+    ids = request.POST.getlist("lancamentos")
+    apagar_tudo = request.POST.get("apagar_tudo") == "1"
+
+    queryset = Lancamento.objects.filter(usuario=request.user)
+
+    if apagar_tudo:
+        lancamentos = list(queryset)
+    elif ids:
+        lancamentos = list(queryset.filter(id__in=ids))
+    else:
+        messages.warning(request, "Selecione pelo menos uma transação para excluir.")
+        return redirect("lista_lancamentos")
+
+    if not lancamentos:
+        messages.warning(request, "Nenhuma transação foi encontrada para exclusão.")
+        return redirect("lista_lancamentos")
+
+    guardar_lancamentos_para_restauracao(request, lancamentos)
+    quantidade = len(lancamentos)
+    Lancamento.objects.filter(id__in=[item.id for item in lancamentos], usuario=request.user).delete()
+    criar_notificacao(
+        request.user,
+        "Transações Excluídas",
+        f"{quantidade} transação(ões) foram removidas.",
+        Notificacao.TIPO_ALERTA,
+        reverse("lista_lancamentos"),
+    )
+    messages.success(request, f"{quantidade} transação(ões) excluída(s). Clique em Refazer em até 5 segundos.")
+    return redirect(f"{reverse('lista_lancamentos')}?undo=1")
+
+
+@login_required
+@require_POST
+def restaurar_lancamentos(request):
+    """Restaura lançamentos apagados se a janela de 5 segundos ainda estiver ativa."""
+    pacote = request.session.get("undo_lancamentos")
+
+    if not pacote:
+        messages.warning(request, "Não existe exclusão recente para refazer.")
+        return redirect("lista_lancamentos")
+
+    expira_em = timezone.datetime.fromisoformat(pacote["expira_em"])
+    if timezone.is_naive(expira_em):
+        expira_em = timezone.make_aware(expira_em, timezone.get_current_timezone())
+
+    if timezone.now() > expira_em:
+        request.session.pop("undo_lancamentos", None)
+        messages.warning(request, "O prazo de 5 segundos terminou. A exclusão já é definitiva.")
+        return redirect("lista_lancamentos")
+
+    restaurados = 0
+    for item in pacote.get("itens", []):
+        categoria = Categoria.objects.filter(id=item["categoria_id"], usuario=request.user).first()
+        if not categoria:
+            continue
+
+        Lancamento.objects.create(
+            usuario=request.user,
+            tipo=item["tipo"],
+            escopo=item["escopo"],
+            orcamento_compartilhado_id=item["orcamento_compartilhado_id"],
+            descricao=item["descricao"],
+            valor=Decimal(item["valor"]),
+            categoria=categoria,
+            data_competencia=date.fromisoformat(item["data_competencia"]),
+            data_vencimento=date.fromisoformat(item["data_vencimento"]),
+            data_pagamento=date.fromisoformat(item["data_pagamento"]) if item["data_pagamento"] else None,
+            status=item["status"],
+            forma_pagamento=item["forma_pagamento"],
+            observacao=item["observacao"],
+            cartao_id=item["cartao_id"],
+            compra_parcelada=item["compra_parcelada"],
+            parcela_atual=item["parcela_atual"],
+            total_parcelas=item["total_parcelas"],
+            grupo_parcelas=uuid.UUID(item["grupo_parcelas"]) if item["grupo_parcelas"] else None,
+        )
+        restaurados += 1
+
+    request.session.pop("undo_lancamentos", None)
+    criar_notificacao(
+        request.user,
+        "Transações Restauradas",
+        f"{restaurados} transação(ões) foram restauradas.",
+        Notificacao.TIPO_SUCESSO,
+        reverse("lista_lancamentos"),
+    )
+    messages.success(request, f"{restaurados} transação(ões) restaurada(s) com sucesso.")
+    return redirect("lista_lancamentos")
+
+
+@login_required
 def relatorios(request):
-    """Exibe visões resumidas por categoria, status e tipo."""
+    """Exibe visões resumidas por categoria e diagnóstico financeiro por IA."""
     inicio_mes, fim_mes = obter_mes_referencia(request)
     plano_usuario = obter_plano_usuario(request.user)
     ia_liberada = usuario_tem_ia_liberada(request.user)
@@ -2364,13 +2928,18 @@ def relatorios(request):
         status=AnaliseFinanceiraIA.STATUS_SUCESSO,
     ).first()
 
+    if request.method == "POST" and request.POST.get("acao") == "redefinir_relatorio":
+        AnaliseFinanceiraIA.objects.filter(usuario=request.user, periodo_inicio=inicio_mes).delete()
+        messages.success(request, "Relatório redefinido com sucesso.")
+        return redirect(f"{request.path}?mes={inicio_mes:%Y-%m}")
+
     if request.method == "POST" and request.POST.get("acao") == "gerar_diagnostico_ia":
         bloqueio = bloquear_recurso_premium(request, "ia", "relatorios")
         if bloqueio:
             return bloqueio
 
         if atingiu_limite_temporario(request, "diagnostico_ia", limite=10, janela_segundos=3600):
-            messages.warning(request, "Limite temporario de diagnosticos atingido. Tente novamente em alguns minutos.")
+            messages.warning(request, "Limite temporário de diagnósticos atingido. Tente novamente em alguns minutos.")
             return redirect("relatorios")
 
         contexto_ia = construir_contexto_analise_financeira(request.user, inicio_mes, fim_mes)
@@ -2406,7 +2975,14 @@ def relatorios(request):
             plano_acao=analise_estruturada["plano_acao"],
             resposta_bruta=resposta_bruta,
         )
-        messages.success(request, "Diagnostico financeiro por IA gerado com sucesso.")
+        criar_notificacao(
+            request.user,
+            "Diagnóstico Financeiro Gerado",
+            f"O diagnóstico financeiro de {inicio_mes:%m/%Y} foi atualizado.",
+            Notificacao.TIPO_SUCESSO,
+            reverse("relatorios"),
+        )
+        messages.success(request, "Diagnóstico Financeiro por IA gerado com sucesso.")
         return redirect(f"{request.path}?mes={inicio_mes:%Y-%m}")
 
     resumo_por_categoria = (
@@ -2414,31 +2990,11 @@ def relatorios(request):
         .annotate(total=Sum("valor"), quantidade=Count("id"))
         .order_by("tipo", "-total")
     )
-    resumo_por_status = (
-        lancamentos.values("status")
-        .annotate(total=Sum("valor"), quantidade=Count("id"))
-        .order_by("status")
-    )
-    resumo_por_tipo = (
-        lancamentos.values("tipo")
-        .annotate(total=Sum("valor"), quantidade=Count("id"))
-        .order_by("tipo")
-    )
-
     mapa_tipos = dict(Lancamento.TIPOS)
-    mapa_status = dict(Lancamento.STATUS_CHOICES)
 
     resumo_por_categoria = [
         {**item, "tipo_label": mapa_tipos.get(item["tipo"], item["tipo"])}
         for item in resumo_por_categoria
-    ]
-    resumo_por_status = [
-        {**item, "status_label": mapa_status.get(item["status"], item["status"])}
-        for item in resumo_por_status
-    ]
-    resumo_por_tipo = [
-        {**item, "tipo_label": mapa_tipos.get(item["tipo"], item["tipo"])}
-        for item in resumo_por_tipo
     ]
 
     contexto = {
@@ -2449,8 +3005,6 @@ def relatorios(request):
         "ia_liberada": ia_liberada,
         "diagnostico_ia": diagnostico_ia,
         "resumo_por_categoria": resumo_por_categoria,
-        "resumo_por_status": resumo_por_status,
-        "resumo_por_tipo": resumo_por_tipo,
     }
     return render(request, "relatorios/relatorios.html", contexto)
 

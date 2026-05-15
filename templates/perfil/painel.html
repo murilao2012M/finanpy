@@ -78,7 +78,7 @@
             {% csrf_token %}
             <label for="{{ foto_form.foto_perfil.id_for_label }}" class="field-label">{{ foto_form.foto_perfil.label }}</label>
             {{ foto_form.foto_perfil }}
-            <div class="form-text register-help-text">Formatos aceitos: JPG, PNG ou WEBP. Tamanho máximo: 2 MB.</div>
+            <div class="form-text register-help-text">Formatos aceitos: JPG, PNG ou WEBP. Tamanho máximo: 5 MB.</div>
             {% for error in foto_form.foto_perfil.errors %}
                 <div class="text-danger small mt-1">{{ error }}</div>
             {% endfor %}

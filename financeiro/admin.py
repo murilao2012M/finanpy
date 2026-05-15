@@ -13,10 +13,20 @@ from .models import (
     LimiteCategoriaContencao,
     MetaFinanceira,
     MembroOrcamento,
+    Notificacao,
     OrcamentoCompartilhado,
     PlanoUsuario,
     PlanoContencao,
 )
+
+
+@admin.register(Notificacao)
+class NotificacaoAdmin(admin.ModelAdmin):
+    """Central de alertas gerados pelo FinanPy."""
+
+    list_display = ("titulo", "usuario", "tipo", "lida", "criada_em")
+    list_filter = ("tipo", "lida", "criada_em")
+    search_fields = ("titulo", "mensagem", "usuario__username", "usuario__email")
 
 
 @admin.register(Categoria)
@@ -95,8 +105,8 @@ class PlanoContencaoAdmin(admin.ModelAdmin):
 class MetaFinanceiraAdmin(admin.ModelAdmin):
     """Configuração visual das metas no admin."""
 
-    list_display = ("titulo", "usuario", "valor_alvo", "valor_atual", "status", "data_limite")
-    list_filter = ("status", "prioridade", "usuario")
+    list_display = ("titulo", "usuario", "estrategia", "valor_alvo", "valor_atual", "status", "data_limite")
+    list_filter = ("status", "estrategia", "prioridade", "usuario")
     search_fields = ("titulo", "descricao")
 
 

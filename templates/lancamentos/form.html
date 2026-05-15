@@ -5,9 +5,9 @@
     <div class="col-xl-8">
         <div class="card-modern">
             <div class="card-body-modern p-4 p-lg-5">
-                <span class="eyebrow">Formulário financeiro</span>
+                <span class="eyebrow">Formulário Financeiro</span>
                 <h1 class="page-title page-title-sm">{{ titulo }}</h1>
-                <p class="page-subtitle">Cadastre receitas e despesas com suporte a cartão e parcelamento.</p>
+                <p class="page-subtitle">Cadastre receitas e despesas com status de pagamento, cartão de crédito e parcelamento.</p>
 
                 {% if lancamento and lancamento.total_parcelas > 1 %}
                     <div class="custom-alert custom-alert-info mb-4">
@@ -17,6 +17,11 @@
 
                 <form method="post">
                     {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        <div class="custom-alert custom-alert-error">
+                            <span>{{ form.non_field_errors|striptags }}</span>
+                        </div>
+                    {% endif %}
                     {% for hidden_field in form.hidden_fields %}
                         {{ hidden_field }}
                     {% endfor %}

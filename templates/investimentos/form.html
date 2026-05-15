@@ -7,9 +7,14 @@
             <div class="card-body-modern p-4 p-lg-5">
                 <span class="eyebrow">Investimentos</span>
                 <h1 class="page-title page-title-sm">{{ titulo }}</h1>
-                <p class="page-subtitle">Registre o ativo, a instituição, o capital aplicado e o valor atual para acompanhar sua carteira.</p>
+                <p class="page-subtitle">Registre o ativo, a instituição, o capital aplicado, o valor atual e as datas para acompanhar sua carteira.</p>
                 <form method="post">
                     {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        <div class="custom-alert custom-alert-error">
+                            <span>{{ form.non_field_errors|striptags }}</span>
+                        </div>
+                    {% endif %}
                     <div class="row">
                         {% for field in form %}
                             <div class="{% if field.name == 'observacao' %}col-12{% else %}col-md-6{% endif %} mb-3">
@@ -22,7 +27,7 @@
                         {% endfor %}
                     </div>
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-premium">Salvar investimento</button>
+                        <button type="submit" class="btn btn-premium">Salvar Investimento</button>
                         <a href="{% url 'lista_investimentos' %}" class="btn btn-premium-outline">Cancelar</a>
                     </div>
                 </form>

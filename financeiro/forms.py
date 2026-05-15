@@ -1,5 +1,6 @@
 """Formularios do app financeiro."""
 
+from datetime import date
 from decimal import Decimal
 
 from django import forms
@@ -47,9 +48,9 @@ class RegistroUsuarioForm(UserCreationForm, BootstrapFormMixin):
         model = User
         fields = ["username", "first_name", "email", "password1", "password2"]
         labels = {
-            "username": "Nome de usuario",
+            "username": "Nome de usuário",
             "password1": "Senha",
-            "password2": "Confirmacao da senha",
+            "password2": "Confirmação da senha",
         }
 
     def __init__(self, *args, **kwargs):
@@ -60,19 +61,19 @@ class RegistroUsuarioForm(UserCreationForm, BootstrapFormMixin):
         """Impede cadastro duplicado com o mesmo e-mail."""
         email = self.cleaned_data["email"].strip().lower()
         if User.objects.filter(email__iexact=email).exists():
-            raise forms.ValidationError("Ja existe uma conta cadastrada com este e-mail.")
+            raise forms.ValidationError("Já existe uma conta cadastrada com este e-mail.")
         return email
 
 
 class LoginUsuarioForm(AuthenticationForm, BootstrapFormMixin):
     """Formulario de login com visual consistente."""
 
-    username = forms.CharField(label="Nome de usuario")
+    username = forms.CharField(label="Nome de usuário")
     password = forms.CharField(label="Senha", widget=forms.PasswordInput)
 
     error_messages = {
-        "invalid_login": "Nome de usuario ou senha invalidos.",
-        "inactive": "Esta conta esta inativa.",
+        "invalid_login": "Nome de usuário ou senha inválidos.",
+        "inactive": "Esta conta ainda não foi ativada. Verifique seu e-mail de confirmação.",
     }
 
     def __init__(self, *args, **kwargs):
@@ -87,7 +88,7 @@ class PerfilUsuarioForm(forms.ModelForm, BootstrapFormMixin):
         model = User
         fields = ["username", "first_name", "email"]
         labels = {
-            "username": "Nome de usuario",
+            "username": "Nome de usuário",
             "first_name": "Nome",
             "email": "E-mail",
         }
@@ -101,12 +102,12 @@ class PerfilUsuarioForm(forms.ModelForm, BootstrapFormMixin):
         email = self.cleaned_data["email"].strip().lower()
         queryset = User.objects.filter(email__iexact=email).exclude(pk=self.instance.pk)
         if queryset.exists():
-            raise forms.ValidationError("Ja existe outra conta usando este e-mail.")
+            raise forms.ValidationError("Já existe outra conta usando este e-mail.")
         return email
 
 
 class ConfiguracaoUsuarioForm(forms.ModelForm, BootstrapFormMixin):
-    """Formulario de preferencias do painel."""
+    """Formulário de preferências do painel."""
 
     class Meta:
         model = ConfiguracaoUsuario
@@ -118,7 +119,7 @@ class ConfiguracaoUsuarioForm(forms.ModelForm, BootstrapFormMixin):
             "exibir_saldo_dashboard",
         ]
         labels = {
-            "moeda_padrao": "Moeda padrao",
+            "moeda_padrao": "Moeda padrão",
             "formato_data": "Formato de data",
             "receber_alertas_email": "Receber alertas por e-mail",
             "receber_alertas_vencimento": "Receber alertas de vencimento",
@@ -131,7 +132,7 @@ class ConfiguracaoUsuarioForm(forms.ModelForm, BootstrapFormMixin):
 
 
 class MoedaPerfilForm(forms.ModelForm, BootstrapFormMixin):
-    """Formulario enxuto para alterar a moeda exibida no perfil."""
+    """Formulário enxuto para alterar a moeda exibida no perfil."""
 
     class Meta:
         model = ConfiguracaoUsuario
@@ -146,7 +147,7 @@ class MoedaPerfilForm(forms.ModelForm, BootstrapFormMixin):
 
 
 class FotoPerfilForm(forms.ModelForm, BootstrapFormMixin):
-    """Formulario para troca segura da foto do usuario."""
+    """Formulário para troca segura da foto do usuário."""
 
     class Meta:
         model = ConfiguracaoUsuario
@@ -163,27 +164,28 @@ class FotoPerfilForm(forms.ModelForm, BootstrapFormMixin):
         self.aplicar_bootstrap()
 
     def clean_foto_perfil(self):
-        """Limita tamanho e extensao para evitar uploads inadequados."""
+        """Limita tamanho e extensão para evitar uploads inadequados."""
         arquivo = self.cleaned_data.get("foto_perfil")
 
         if not arquivo:
             return arquivo
 
-        extensoes_permitidas = {".jpg", ".jpeg", ".png", ".webp"}
+        extensoes_permitidas = {".jpg", ".jpeg", ".png", ".webp", ".jfif"}
         nome_arquivo = arquivo.name.lower()
+        content_type = getattr(arquivo, "content_type", "")
 
-        if not any(nome_arquivo.endswith(extensao) for extensao in extensoes_permitidas):
+        if not any(nome_arquivo.endswith(extensao) for extensao in extensoes_permitidas) and not content_type.startswith("image/"):
             raise forms.ValidationError("Envie uma imagem nos formatos JPG, PNG ou WEBP.")
 
-        limite_bytes = 2 * 1024 * 1024
+        limite_bytes = 5 * 1024 * 1024
         if arquivo.size > limite_bytes:
-            raise forms.ValidationError("A foto precisa ter no maximo 2 MB.")
+            raise forms.ValidationError("A foto precisa ter no máximo 5 MB.")
 
         return arquivo
 
 
 class AlterarSenhaPerfilForm(BootstrapFormMixin, forms.Form):
-    """Formulario simples para troca de senha dentro do painel."""
+    """Formulário simples para troca de senha dentro do painel."""
 
     senha_atual = forms.CharField(label="Senha atual", widget=forms.PasswordInput)
     nova_senha = forms.CharField(
@@ -202,17 +204,17 @@ class AlterarSenhaPerfilForm(BootstrapFormMixin, forms.Form):
         """Confere se a senha atual foi digitada corretamente."""
         senha_atual = self.cleaned_data["senha_atual"]
         if not self.usuario.check_password(senha_atual):
-            raise forms.ValidationError("A senha atual informada esta incorreta.")
+            raise forms.ValidationError("A senha atual informada está incorreta.")
         return senha_atual
 
     def clean(self):
-        """Valida a nova senha e a confirmacao."""
+        """Valida a nova senha e a confirmação."""
         cleaned_data = super().clean()
         nova_senha = cleaned_data.get("nova_senha")
         confirmar_nova_senha = cleaned_data.get("confirmar_nova_senha")
 
         if nova_senha and confirmar_nova_senha and nova_senha != confirmar_nova_senha:
-            self.add_error("confirmar_nova_senha", "A confirmacao da nova senha nao confere.")
+            self.add_error("confirmar_nova_senha", "A confirmação da nova senha não confere.")
 
         if nova_senha:
             try:
@@ -223,14 +225,41 @@ class AlterarSenhaPerfilForm(BootstrapFormMixin, forms.Form):
         return cleaned_data
 
     def save(self):
-        """Aplica a nova senha ao usuario."""
+        """Aplica a nova senha ao usuário."""
         self.usuario.set_password(self.cleaned_data["nova_senha"])
         self.usuario.save(update_fields=["password"])
         return self.usuario
 
 
+class ExcluirContaForm(BootstrapFormMixin, forms.Form):
+    """Confirma a exclusão definitiva da conta do usuário."""
+
+    confirmacao = forms.CharField(
+        label="Digite EXCLUIR para confirmar",
+        max_length=20,
+    )
+    senha = forms.CharField(label="Senha atual", widget=forms.PasswordInput)
+
+    def __init__(self, usuario, *args, **kwargs):
+        self.usuario = usuario
+        super().__init__(*args, **kwargs)
+        self.aplicar_bootstrap()
+
+    def clean_confirmacao(self):
+        confirmacao = self.cleaned_data["confirmacao"].strip().upper()
+        if confirmacao != "EXCLUIR":
+            raise forms.ValidationError("Digite EXCLUIR para confirmar a exclusão da conta.")
+        return confirmacao
+
+    def clean_senha(self):
+        senha = self.cleaned_data["senha"]
+        if not self.usuario.check_password(senha):
+            raise forms.ValidationError("A senha atual informada está incorreta.")
+        return senha
+
+
 class CategoriaForm(forms.ModelForm, BootstrapFormMixin):
-    """Formulario de categoria."""
+    """Formulário de categoria."""
 
     class Meta:
         model = Categoria
@@ -238,7 +267,7 @@ class CategoriaForm(forms.ModelForm, BootstrapFormMixin):
         labels = {
             "nome": "Nome da categoria",
             "tipo": "Tipo",
-            "descricao": "Descricao",
+            "descricao": "Descrição",
         }
         widgets = {"descricao": forms.Textarea(attrs={"rows": 3})}
 
@@ -248,17 +277,17 @@ class CategoriaForm(forms.ModelForm, BootstrapFormMixin):
 
 
 class CartaoCreditoForm(forms.ModelForm, BootstrapFormMixin):
-    """Formulario de cartao."""
+    """Formulário de cartão."""
 
     class Meta:
         model = CartaoCredito
         fields = ["nome", "limite", "dia_fechamento", "dia_vencimento", "ativo"]
         labels = {
-            "nome": "Nome do cartao",
+            "nome": "Nome do cartão",
             "limite": "Limite",
             "dia_fechamento": "Dia de fechamento",
             "dia_vencimento": "Dia de vencimento",
-            "ativo": "Cartao ativo",
+            "ativo": "Cartão ativo",
         }
 
     def __init__(self, *args, **kwargs):
@@ -267,7 +296,7 @@ class CartaoCreditoForm(forms.ModelForm, BootstrapFormMixin):
 
 
 class LancamentoForm(forms.ModelForm, BootstrapFormMixin):
-    """Formulario principal de receitas e despesas."""
+    """Formulário principal de receitas e despesas."""
 
     class Meta:
         model = Lancamento
@@ -281,6 +310,7 @@ class LancamentoForm(forms.ModelForm, BootstrapFormMixin):
             "data_competencia",
             "data_vencimento",
             "data_pagamento",
+            "status",
             "forma_pagamento",
             "cartao",
             "compra_parcelada",
@@ -288,20 +318,21 @@ class LancamentoForm(forms.ModelForm, BootstrapFormMixin):
             "observacao",
         ]
         labels = {
-            "tipo": "Tipo do lancamento",
+            "tipo": "Tipo do lançamento",
             "escopo": "Conta",
             "orcamento_compartilhado": "Orçamento conjunto",
-            "descricao": "Descricao",
+            "descricao": "Descrição",
             "valor": "Valor",
             "categoria": "Categoria",
-            "data_competencia": "Data de competencia",
+            "data_competencia": "Data de competência",
             "data_vencimento": "Data de vencimento",
             "data_pagamento": "Data do pagamento",
+            "status": "Status do pagamento",
             "forma_pagamento": "Forma de pagamento",
-            "cartao": "Cartao de credito",
+            "cartao": "Cartão de crédito",
             "compra_parcelada": "Compra parcelada",
             "total_parcelas": "Quantidade de parcelas",
-            "observacao": "Observacoes",
+            "observacao": "Observações",
         }
         widgets = {
             "data_competencia": forms.DateInput(attrs={"type": "date"}),
@@ -335,7 +366,7 @@ class LancamentoForm(forms.ModelForm, BootstrapFormMixin):
             self.fields["orcamento_compartilhado"].widget = forms.HiddenInput()
 
     def clean(self):
-        """Valida regras de negocio simples antes de salvar."""
+        """Valida regras de negócio simples antes de salvar."""
         cleaned_data = super().clean()
         tipo = cleaned_data.get("tipo")
         escopo = cleaned_data.get("escopo")
@@ -347,7 +378,7 @@ class LancamentoForm(forms.ModelForm, BootstrapFormMixin):
         total_parcelas = cleaned_data.get("total_parcelas") or 1
 
         if categoria and tipo and categoria.tipo != tipo:
-            self.add_error("categoria", "Escolha uma categoria do mesmo tipo do lancamento.")
+            self.add_error("categoria", "Escolha uma categoria do mesmo tipo do lançamento.")
 
         if escopo == Lancamento.ESCOPO_COMPARTILHADO:
             if not self.familia_liberada:
@@ -360,7 +391,7 @@ class LancamentoForm(forms.ModelForm, BootstrapFormMixin):
             cleaned_data["orcamento_compartilhado"] = None
 
         if forma_pagamento == Lancamento.FORMA_CREDITO and not cartao and tipo == Lancamento.TIPO_DESPESA:
-            self.add_error("cartao", "Selecione um cartao para despesas no credito.")
+            self.add_error("cartao", "Selecione um cartão para despesas no crédito.")
 
         if compra_parcelada and total_parcelas < 2:
             self.add_error("total_parcelas", "Uma compra parcelada precisa ter pelo menos 2 parcelas.")
@@ -405,7 +436,7 @@ class ConviteOrcamentoForm(BootstrapFormMixin, forms.Form):
 
 
 class MetaFinanceiraForm(forms.ModelForm, BootstrapFormMixin):
-    """Formulario do modulo de metas financeiras."""
+    """Formulário do módulo de metas financeiras."""
 
     class Meta:
         model = MetaFinanceira
@@ -414,18 +445,22 @@ class MetaFinanceiraForm(forms.ModelForm, BootstrapFormMixin):
             "descricao",
             "valor_alvo",
             "valor_atual",
+            "valor_semanal_planejado",
             "data_inicio",
             "data_limite",
+            "estrategia",
             "prioridade",
             "status",
         ]
         labels = {
             "titulo": "Nome da meta",
-            "descricao": "Descricao",
+            "descricao": "Descrição",
             "valor_alvo": "Valor alvo",
-            "valor_atual": "Valor ja acumulado",
-            "data_inicio": "Data de inicio",
+            "valor_atual": "Valor já acumulado",
+            "valor_semanal_planejado": "Quanto posso guardar por semana",
+            "data_inicio": "Data de início",
             "data_limite": "Prazo final",
+            "estrategia": "Estratégia da meta",
             "prioridade": "Prioridade",
             "status": "Status",
         }
@@ -446,6 +481,7 @@ class MetaFinanceiraForm(forms.ModelForm, BootstrapFormMixin):
         cleaned_data = super().clean()
         valor_alvo = cleaned_data.get("valor_alvo")
         valor_atual = cleaned_data.get("valor_atual")
+        valor_semanal_planejado = cleaned_data.get("valor_semanal_planejado")
         data_inicio = cleaned_data.get("data_inicio")
         data_limite = cleaned_data.get("data_limite")
 
@@ -453,16 +489,39 @@ class MetaFinanceiraForm(forms.ModelForm, BootstrapFormMixin):
             self.add_error("valor_alvo", "O valor alvo precisa ser maior que zero.")
 
         if valor_atual is not None and valor_atual < 0:
-            self.add_error("valor_atual", "O valor atual nao pode ser negativo.")
+            self.add_error("valor_atual", "O valor atual não pode ser negativo.")
+
+        if valor_semanal_planejado is not None and valor_semanal_planejado < 0:
+            self.add_error("valor_semanal_planejado", "O valor semanal não pode ser negativo.")
 
         if data_inicio and data_limite and data_limite < data_inicio:
-            self.add_error("data_limite", "O prazo final nao pode ser anterior a data de inicio.")
+            self.add_error("data_limite", "O prazo final não pode ser anterior à data de início.")
+
+        if (
+            valor_alvo
+            and valor_atual is not None
+            and valor_semanal_planejado
+            and valor_semanal_planejado > 0
+            and data_limite
+        ):
+            hoje = data_inicio or date.today()
+            restante = max(valor_alvo - valor_atual, Decimal("0.00"))
+            dias_restantes = max((data_limite - hoje).days, 1)
+            semanas_restantes = max(Decimal(dias_restantes) / Decimal("7"), Decimal("1"))
+            semanal_necessario = restante / semanas_restantes if restante > 0 else Decimal("0.00")
+
+            if semanal_necessario > 0 and valor_semanal_planejado >= semanal_necessario:
+                cleaned_data["estrategia"] = MetaFinanceira.ESTRATEGIA_AGRESSIVA
+            elif semanal_necessario > 0 and valor_semanal_planejado >= semanal_necessario * Decimal("0.60"):
+                cleaned_data["estrategia"] = MetaFinanceira.ESTRATEGIA_SUAVE
+            else:
+                cleaned_data["estrategia"] = MetaFinanceira.ESTRATEGIA_CONSERVADORA
 
         return cleaned_data
 
 
 class InvestimentoForm(forms.ModelForm, BootstrapFormMixin):
-    """Formulario para cadastro e edicao dos investimentos."""
+    """Formulário para cadastro e edição dos investimentos."""
 
     class Meta:
         model = Investimento
@@ -481,14 +540,14 @@ class InvestimentoForm(forms.ModelForm, BootstrapFormMixin):
         labels = {
             "nome": "Nome do investimento",
             "tipo": "Tipo",
-            "instituicao": "Instituicao",
+            "instituicao": "Instituição",
             "valor_aplicado": "Valor aplicado",
             "valor_atual": "Valor atual",
-            "data_aplicacao": "Data da aplicacao",
+            "data_aplicacao": "Data da aplicação",
             "data_vencimento": "Data de vencimento",
             "objetivo": "Objetivo",
             "status": "Status",
-            "observacao": "Observacoes",
+            "observacao": "Observações",
         }
         widgets = {
             "data_aplicacao": forms.DateInput(attrs={"type": "date"}),
@@ -503,7 +562,7 @@ class InvestimentoForm(forms.ModelForm, BootstrapFormMixin):
         self.fields["objetivo"].required = False
 
     def clean(self):
-        """Valida o intervalo de datas e os valores monetarios."""
+        """Valida o intervalo de datas e os valores monetários."""
         cleaned_data = super().clean()
         valor_aplicado = cleaned_data.get("valor_aplicado")
         valor_atual = cleaned_data.get("valor_atual")
@@ -514,24 +573,24 @@ class InvestimentoForm(forms.ModelForm, BootstrapFormMixin):
             self.add_error("valor_aplicado", "O valor aplicado precisa ser maior que zero.")
 
         if valor_atual is not None and valor_atual < 0:
-            self.add_error("valor_atual", "O valor atual nao pode ser negativo.")
+            self.add_error("valor_atual", "O valor atual não pode ser negativo.")
 
         if data_aplicacao and data_vencimento and data_vencimento < data_aplicacao:
-            self.add_error("data_vencimento", "O vencimento nao pode ser anterior a data da aplicacao.")
+            self.add_error("data_vencimento", "O vencimento não pode ser anterior à data da aplicação.")
 
         return cleaned_data
 
 
 class AnaliseFinanceiraIAForm(BootstrapFormMixin, forms.Form):
-    """Formulario simples para escolher o periodo da analise premium."""
+    """Formulário simples para escolher o período da análise premium."""
 
     mes_referencia = forms.DateField(
-        label="Mes de referencia",
+        label="Mês de referência",
         widget=forms.DateInput(attrs={"type": "month"}),
         input_formats=["%Y-%m"],
     )
     forcar_regeneracao = forms.BooleanField(
-        label="Gerar nova analise mesmo que ja exista uma salva para este mes",
+        label="Gerar nova análise mesmo que já exista uma salva para este mês",
         required=False,
     )
 
@@ -541,12 +600,12 @@ class AnaliseFinanceiraIAForm(BootstrapFormMixin, forms.Form):
 
 
 class SimuladorDecisaoForm(BootstrapFormMixin, forms.Form):
-    """Formulario premium para simular uma decisao financeira antes da compra."""
+    """Formulário premium para simular uma decisão financeira antes da compra."""
 
     TIPO_COMPRA_UNICA = "COMPRA_UNICA"
     TIPO_PARCELADA = "PARCELADA"
     TIPO_CHOICES = [
-        (TIPO_COMPRA_UNICA, "Compra unica"),
+        (TIPO_COMPRA_UNICA, "Compra única"),
         (TIPO_PARCELADA, "Compra parcelada"),
     ]
 
@@ -554,17 +613,17 @@ class SimuladorDecisaoForm(BootstrapFormMixin, forms.Form):
     PRIORIDADE_IMPORTANTE = "IMPORTANTE"
     PRIORIDADE_DESEJO = "DESEJO"
     PRIORIDADE_CHOICES = [
-        (PRIORIDADE_NECESSARIA, "Necessaria"),
+        (PRIORIDADE_NECESSARIA, "Necessária"),
         (PRIORIDADE_IMPORTANTE, "Importante"),
         (PRIORIDADE_DESEJO, "Desejo"),
     ]
 
     descricao = forms.CharField(
-        label="Nome da decisao",
+        label="Nome da decisão",
         max_length=120,
-        help_text="Exemplo: celular novo, curso, viagem ou compra no cartao.",
+        help_text="Exemplo: celular novo, curso, viagem ou compra no cartão.",
     )
-    tipo = forms.ChoiceField(label="Tipo da decisao", choices=TIPO_CHOICES)
+    tipo = forms.ChoiceField(label="Tipo da decisão", choices=TIPO_CHOICES)
     prioridade = forms.ChoiceField(label="Prioridade", choices=PRIORIDADE_CHOICES)
     valor_total = forms.DecimalField(
         label="Valor total",
@@ -579,7 +638,7 @@ class SimuladorDecisaoForm(BootstrapFormMixin, forms.Form):
         initial=1,
     )
     mes_inicio = forms.DateField(
-        label="Mes de inicio",
+        label="Mês de início",
         widget=forms.DateInput(attrs={"type": "month"}),
         input_formats=["%Y-%m"],
     )
@@ -589,7 +648,7 @@ class SimuladorDecisaoForm(BootstrapFormMixin, forms.Form):
         self.aplicar_bootstrap()
 
     def clean(self):
-        """Ajusta parcelas para compra unica e valida combinacoes simples."""
+        """Ajusta parcelas para compra única e valida combinações simples."""
         cleaned_data = super().clean()
         tipo = cleaned_data.get("tipo")
 

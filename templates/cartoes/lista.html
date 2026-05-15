@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load financeiro_extras %}
 
 {% block content %}
 <section class="hero-panel mb-4">
@@ -37,7 +38,7 @@
                     {% for cartao in cartoes %}
                         <tr>
                             <td class="table-title">{{ cartao.nome }}</td>
-                            <td>R$ {{ cartao.limite }}</td>
+                            <td>{{ cartao.limite|brl }}</td>
                             <td>Dia {{ cartao.dia_fechamento }}</td>
                             <td>Dia {{ cartao.dia_vencimento }}</td>
                             <td>

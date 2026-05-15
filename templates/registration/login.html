@@ -1,30 +1,30 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="auth-panel">
-    <div class="auth-side">
-        <span class="eyebrow">Fintech pessoal</span>
-        <h1 class="auth-title">Controle financeiro com cara de produto premium.</h1>
-        <p class="auth-text">Acompanhe receitas, despesas, cartões, relatórios e o crescimento do seu saldo em um painel escuro, limpo e moderno.</p>
-        <div class="auth-highlights">
-            <div class="auth-highlight"><i class="fa-solid fa-chart-line"></i><span>Dashboard com foco em crescimento</span></div>
-            <div class="auth-highlight"><i class="fa-regular fa-credit-card"></i><span>Controle de cartões e parcelas</span></div>
-            <div class="auth-highlight"><i class="fa-solid fa-shield-heart"></i><span>Organização simples e segura</span></div>
+<div class="auth-page">
+    <div class="auth-panel">
+        <div class="auth-side">
+            <span class="eyebrow">Fintech Pessoal</span>
+            <h1 class="auth-title">Controle financeiro com segurança e visual premium.</h1>
+            <p class="auth-text">Acesse seu painel para acompanhar receitas, despesas, cartões, metas, investimentos, relatórios e IA financeira.</p>
+            <div class="auth-highlights">
+                <div class="auth-highlight"><i class="fa-solid fa-shield-halved"></i><span>5 tentativas antes da recuperação obrigatória de senha</span></div>
+                <div class="auth-highlight"><i class="fa-regular fa-credit-card"></i><span>Controle de cartões e compras parceladas</span></div>
+                <div class="auth-highlight"><i class="fa-solid fa-robot"></i><span>Análise Financeira com IA no Premium</span></div>
+            </div>
         </div>
-    </div>
-    <div class="auth-card card-modern">
-        <div class="card-body-modern p-4 p-lg-5">
-            <h1 class="page-title page-title-sm text-center">Entrar no FinanPy</h1>
-            <p class="page-subtitle text-center">Use seu usuário e senha para acessar o sistema.</p>
-            <form method="post">
-                {% csrf_token %}
-                {% if form.non_field_errors %}
-                    <div class="custom-alert custom-alert-error mb-3">
-                        <span>{{ form.non_field_errors|striptags }}</span>
-                    </div>
-                {% endif %}
-                {% for field in form %}
-                    {% if field.name != 'remember_me' %}
+        <div class="auth-card card-modern">
+            <div class="card-body-modern p-4 p-lg-5">
+                <h1 class="page-title page-title-sm text-center">Entrar No FinanPy</h1>
+                <p class="page-subtitle text-center">Use seu nome de usuário e senha para acessar o sistema.</p>
+                <form method="post">
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        <div class="custom-alert custom-alert-error mb-3">
+                            <span>{{ form.non_field_errors|striptags }}</span>
+                        </div>
+                    {% endif %}
+                    {% for field in form %}
                         <div class="mb-3">
                             <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
                             {{ field }}
@@ -32,18 +32,30 @@
                                 <div class="text-danger small">{{ error }}</div>
                             {% endfor %}
                         </div>
+                    {% endfor %}
+                    {% if next %}
+                        <input type="hidden" name="next" value="{{ next }}">
                     {% endif %}
-                {% endfor %}
-                {% if next %}
-                    <input type="hidden" name="next" value="{{ next }}">
-                {% endif %}
-                <button type="submit" class="btn btn-premium w-100">Entrar</button>
-            </form>
-            <p class="text-center mt-3 mb-0 text-secondary">
-                Ainda não tem conta?
-                <a href="{% url 'registrar_usuario' %}" class="text-link">Criar cadastro</a>
-            </p>
+                    <button type="submit" class="btn btn-premium w-100">Entrar</button>
+                </form>
+                <div class="auth-login-links">
+                    <a href="{% url 'password_reset' %}" class="text-link">Esqueci minha senha</a>
+                    <span>•</span>
+                    <a href="{% url 'registrar_usuario' %}" class="text-link">Criar cadastro</a>
+                </div>
+            </div>
         </div>
     </div>
+
+    <footer class="register-footer register-footer-wide auth-login-footer">
+        <div class="register-footer-brand">
+            <strong>FinanPy</strong>
+            <span>Segurança, organização financeira e clareza para sua rotina.</span>
+        </div>
+        <div class="register-footer-legal">
+            <span>Este site é propriedade do <strong>FinanPy</strong>.</span>
+            <span>FinanPy 2026. Todos os Direitos Reservados.</span>
+        </div>
+    </footer>
 </div>
 {% endblock %}

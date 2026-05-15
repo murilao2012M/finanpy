@@ -1,58 +1,131 @@
 {% extends "base.html" %}
+{% load financeiro_extras %}
 
 {% block content %}
 <section class="hero-panel mb-4">
     <div>
         <span class="eyebrow">Carteira</span>
         <h1 class="page-title">Investimentos</h1>
-        <p class="page-subtitle">Cadastre sua carteira, acompanhe evolução e visualize a rentabilidade dos seus ativos.</p>
+        <p class="page-subtitle">Cadastre sua carteira, filtre por datas e acompanhe a distribuição entre FII, Ações, Renda Fixa e outros ativos.</p>
     </div>
     <a href="{% url 'criar_investimento' %}" class="btn btn-premium">
         <i class="fa-solid fa-plus"></i>
-        Novo investimento
+        Novo Investimento
     </a>
 </section>
 
 <div class="dashboard-grid dashboard-metrics mb-4">
     <article class="metric-card card-modern">
-        <p class="metric-label">Total aplicado</p>
-        <h2 class="metric-value">R$ {{ total_aplicado }}</h2>
+        <p class="metric-label">Total Aplicado</p>
+        <h2 class="metric-value">{{ total_aplicado|brl }}</h2>
         <span class="metric-trend text-info">
             <i class="fa-solid fa-wallet"></i>
-            Capital em investimentos ativos
+            Capital Em Investimentos Ativos
         </span>
     </article>
     <article class="metric-card card-modern">
-        <p class="metric-label">Valor atual</p>
-        <h2 class="metric-value">R$ {{ total_atual }}</h2>
+        <p class="metric-label">Valor Atual</p>
+        <h2 class="metric-value">{{ total_atual|brl }}</h2>
         <span class="metric-trend text-success">
             <i class="fa-solid fa-chart-line"></i>
-            Valor consolidado da carteira
+            Valor Consolidado Da Carteira
         </span>
     </article>
     <article class="metric-card card-modern">
         <p class="metric-label">Rentabilidade</p>
-        <h2 class="metric-value">R$ {{ rentabilidade_total }}</h2>
+        <h2 class="metric-value">{{ rentabilidade_total|brl }}</h2>
         <span class="metric-trend {% if rentabilidade_total >= 0 %}text-success{% else %}text-danger{% endif %}">
             <i class="fa-solid {% if rentabilidade_total >= 0 %}fa-caret-up{% else %}fa-caret-down{% endif %}"></i>
-            Diferença entre valor atual e aplicado
+            Diferença Entre Valor Atual E Aplicado
         </span>
     </article>
     <article class="metric-card card-modern">
-        <p class="metric-label">Ativos em carteira</p>
+        <p class="metric-label">Ativos Em Carteira</p>
         <h2 class="metric-value">{{ investimentos_ativos }}</h2>
         <span class="metric-trend text-warning">
             <i class="fa-solid fa-layer-group"></i>
-            {{ total_investimentos }} registros no total
+            {{ total_investimentos }} Registro(s) No Total
         </span>
     </article>
+</div>
+
+<section class="card-modern mb-4">
+    <div class="card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Filtros Da Carteira</h2>
+                <p class="panel-subtitle">Escolha datas de aplicação e tipo de investimento para analisar um recorte específico.</p>
+            </div>
+        </div>
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label for="data_inicio" class="field-label">Data Inicial</label>
+                <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio }}" class="form-control">
+            </div>
+            <div class="col-md-4">
+                <label for="data_fim" class="field-label">Data Final</label>
+                <input type="date" name="data_fim" id="data_fim" value="{{ data_fim }}" class="form-control">
+            </div>
+            <div class="col-md-4">
+                <label for="tipo" class="field-label">Tipo</label>
+                <select name="tipo" id="tipo" class="form-select">
+                    <option value="">Todos</option>
+                    {% for codigo, nome in tipos_investimento %}
+                        <option value="{{ codigo }}" {% if tipo_filtro == codigo %}selected{% endif %}>{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-premium">Filtrar</button>
+                <a href="{% url 'lista_investimentos' %}" class="btn btn-premium-outline">Limpar</a>
+            </div>
+        </form>
+    </div>
+</section>
+
+<div class="dashboard-layout mb-4">
+    <section class="card-modern card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Gráfico Dos Investimentos</h2>
+                <p class="panel-subtitle">Distribuição do valor atual por tipo de ativo.</p>
+            </div>
+        </div>
+        <div class="investment-chart-wrapper">
+            <canvas id="investimentosChart"></canvas>
+        </div>
+    </section>
+
+    <section class="card-modern card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Resumo Por Tipo</h2>
+                <p class="panel-subtitle">Leitura rápida da composição da sua carteira.</p>
+            </div>
+        </div>
+        <div class="goal-list">
+            {% for item in resumo_por_tipo %}
+                <article class="goal-item">
+                    <div class="goal-item-top">
+                        <div>
+                            <h3>{{ item.tipo_label }}</h3>
+                            <p>{{ item.quantidade }} ativo(s)</p>
+                        </div>
+                        <strong>{{ item.total|brl }}</strong>
+                    </div>
+                </article>
+            {% empty %}
+                <div class="empty-state-inline">Nenhum investimento ativo para montar o gráfico.</div>
+            {% endfor %}
+        </div>
+    </section>
 </div>
 
 <section class="card-modern">
     <div class="card-body-modern">
         <div class="panel-header mb-4">
             <div>
-                <h2 class="panel-title">Lista de investimentos</h2>
+                <h2 class="panel-title">Lista De Investimentos</h2>
                 <p class="panel-subtitle">Gerencie tipo, instituição, valor aplicado, valor atual e status de cada posição.</p>
             </div>
         </div>
@@ -74,19 +147,19 @@
                     {% for investimento in investimentos %}
                         <tr>
                             <td>
-                                <div class="table-title">{{ investimento.nome }}</div>
-                                <div class="table-subtitle">{{ investimento.instituicao }}</div>
+                                <div class="table-title">{{ investimento.nome|title_pt }}</div>
+                                <div class="table-subtitle">{{ investimento.instituicao|title_pt }}</div>
                             </td>
                             <td>{{ investimento.get_tipo_display }}</td>
                             <td>
                                 <span class="status-pill {% if investimento.status == 'ATIVO' %}status-paid{% else %}status-paused{% endif %}">
-                                    {{ investimento.get_status_display }}
+                                    {{ investimento.get_status_display|title_pt }}
                                 </span>
                             </td>
-                            <td>R$ {{ investimento.valor_aplicado }}</td>
-                            <td>R$ {{ investimento.valor_atual }}</td>
+                            <td>{{ investimento.valor_aplicado|brl }}</td>
+                            <td>{{ investimento.valor_atual|brl }}</td>
                             <td class="{% if investimento.rentabilidade_valor >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                R$ {{ investimento.rentabilidade_valor }}
+                                {{ investimento.rentabilidade_valor|brl }}
                                 <div class="table-subtitle">{{ investimento.rentabilidade_percentual }}%</div>
                             </td>
                             <td>{{ investimento.data_aplicacao|date:"d/m/Y" }}</td>
@@ -105,4 +178,45 @@
         </div>
     </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const investimentosLabels = {{ grafico_labels|safe }};
+    const investimentosValores = {{ grafico_valores|safe }};
+    const investimentosCanvas = document.getElementById("investimentosChart");
+
+    if (investimentosCanvas) {
+        new Chart(investimentosCanvas, {
+            type: "doughnut",
+            data: {
+                labels: investimentosLabels,
+                datasets: [{
+                    data: investimentosValores,
+                    backgroundColor: ["#8b5cf6", "#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#14b8a6", "#64748b"],
+                    borderWidth: 0,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                        labels: {
+                            color: getComputedStyle(document.body).getPropertyValue("--text-main"),
+                            usePointStyle: true,
+                        },
+                    },
+                },
+                animation: {
+                    animateRotate: true,
+                    animateScale: true,
+                    duration: 900,
+                },
+            },
+        });
+    }
+</script>
 {% endblock %}

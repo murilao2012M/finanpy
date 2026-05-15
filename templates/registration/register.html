@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="register-screen">
-    <section class="register-layout">
+<div class="register-screen register-screen-wide">
+    <section class="register-layout register-layout-wide">
         <div class="register-hero">
             <div class="register-brand">
                 <span class="brand-mark register-brand-mark">
@@ -14,35 +14,44 @@
                 </div>
             </div>
 
-            <span class="eyebrow">Comece agora</span>
-            <h1 class="register-title">Crie sua conta e entre no seu painel financeiro.</h1>
+            <span class="eyebrow">Comece Agora</span>
+            <h1 class="register-title">Seu sistema financeiro pessoal em poucos minutos.</h1>
             <p class="register-text">
-                Organize receitas, despesas, metas e cartões em um sistema claro,
-                confiável e pronto para o seu dia a dia.
+                Crie sua conta, confirme seu e-mail e entre no painel para organizar receitas,
+                despesas, metas, investimentos e cartões com clareza.
             </p>
 
-            <div class="register-points">
-                <div class="register-point">
-                    <i class="fa-solid fa-check"></i>
-                    <span>Cadastro rápido e protegido</span>
-                </div>
-                <div class="register-point">
-                    <i class="fa-solid fa-check"></i>
-                    <span>Painel completo logo após o acesso</span>
-                </div>
-                <div class="register-point">
-                    <i class="fa-solid fa-check"></i>
-                    <span>Experiência pensada para uso real</span>
-                </div>
+            <div class="auth-feature-grid">
+                <article class="auth-feature-card">
+                    <div class="auth-feature-icon"><i class="fa-solid fa-lock"></i></div>
+                    <div>
+                        <h3>Cadastro Seguro</h3>
+                        <p>Conta protegida por senha, confirmação de e-mail e tratamento de erros no login.</p>
+                    </div>
+                </article>
+                <article class="auth-feature-card">
+                    <div class="auth-feature-icon"><i class="fa-solid fa-robot"></i></div>
+                    <div>
+                        <h3>Premium Com IA</h3>
+                        <p>O plano pago libera Análise Financeira com IA, Diagnóstico em Relatórios e recursos avançados.</p>
+                    </div>
+                </article>
+                <article class="auth-feature-card">
+                    <div class="auth-feature-icon"><i class="fa-solid fa-crown"></i></div>
+                    <div>
+                        <h3>Plano De 30 Dias</h3>
+                        <p>Assinatura Premium para desbloquear Simulador, Modo Anti-Descontrole e Modo Casal/Família.</p>
+                    </div>
+                </article>
             </div>
         </div>
 
         <section class="register-card card-modern">
             <div class="register-card-body">
                 <div class="register-card-header">
-                    <span class="auth-badge">Cadastro seguro</span>
-                    <h2 class="page-title page-title-sm text-center">Criar conta</h2>
-                    <p class="page-subtitle text-center">Preencha seus dados para acessar o FinanPy.</p>
+                    <span class="auth-badge">Cadastro Seguro</span>
+                    <h2 class="page-title page-title-sm text-center">Criar Conta</h2>
+                    <p class="page-subtitle text-center">Preencha seus dados. Depois, confirme o e-mail para liberar o login.</p>
                 </div>
 
                 <form method="post" class="register-form">
@@ -67,7 +76,7 @@
                     {% endfor %}
 
                     <div class="register-full">
-                        <button type="submit" class="btn btn-premium w-100 register-submit-btn">Cadastrar e entrar no painel</button>
+                        <button type="submit" class="btn btn-premium w-100 register-submit-btn">Cadastrar E Confirmar E-mail</button>
                     </div>
                 </form>
 
@@ -81,19 +90,19 @@
         </section>
     </section>
 
-    <footer class="register-footer">
+    <footer class="register-footer register-footer-wide">
         <div class="register-footer-brand">
             <strong>FinanPy</strong>
-            <span>Seu espaço para organizar finanças com mais clareza e constância.</span>
+            <span>Seu espaço para organizar finanças com clareza, segurança e constância.</span>
         </div>
         <div class="register-footer-links">
-            <span><i class="fa-solid fa-lock"></i> Acesso protegido</span>
-            <span><i class="fa-solid fa-chart-pie"></i> Painel inteligente</span>
-            <span><i class="fa-solid fa-bullseye"></i> Metas e evolução</span>
+            <span><i class="fa-solid fa-lock"></i> Acesso Protegido</span>
+            <span><i class="fa-solid fa-chart-pie"></i> Painel Inteligente</span>
+            <span><i class="fa-solid fa-crown"></i> Plano Premium</span>
         </div>
         <div class="register-footer-legal">
             <span>Este site é propriedade do <strong>FinanPy</strong>.</span>
-            <span>© FinanPy. Todos os direitos reservados.</span>
+            <span>FinanPy 2026. Todos os Direitos Reservados.</span>
         </div>
     </footer>
 </div>

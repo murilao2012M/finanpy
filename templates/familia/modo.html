@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load financeiro_extras %}
 
 {% block content %}
 <section class="hero-panel family-hero mb-4">
@@ -47,7 +48,7 @@
             </p>
             <form method="post" action="{% url 'checkout_premium' %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-premium">Assinar Premium por R$ 10,50/mês</button>
+                <button type="submit" class="btn btn-premium">Assinar Plano de 30 Dias</button>
             </form>
         </div>
     </section>
@@ -145,7 +146,7 @@
         <div class="dashboard-grid dashboard-metrics mb-4">
             <article class="metric-card card-modern">
                 <p class="metric-label">Saldo conjunto</p>
-                <h2 class="metric-value">R$ {{ resumo.saldo_conjunto }}</h2>
+                <h2 class="metric-value">{{ resumo.saldo_conjunto|brl }}</h2>
                 <span class="metric-trend {% if resumo.saldo_conjunto >= 0 %}text-success{% else %}text-danger{% endif %}">
                     <i class="fa-solid fa-people-arrows"></i>
                     Receitas menos despesas conjuntas
@@ -153,7 +154,7 @@
             </article>
             <article class="metric-card card-modern">
                 <p class="metric-label">Despesas conjuntas</p>
-                <h2 class="metric-value">R$ {{ resumo.total_despesas_conjuntas }}</h2>
+                <h2 class="metric-value">{{ resumo.total_despesas_conjuntas|brl }}</h2>
                 <span class="metric-trend text-danger">
                     <i class="fa-solid fa-arrow-trend-down"></i>
                     Gastos compartilhados
@@ -161,7 +162,7 @@
             </article>
             <article class="metric-card card-modern">
                 <p class="metric-label">Meu saldo individual</p>
-                <h2 class="metric-value">R$ {{ resumo.saldo_individual }}</h2>
+                <h2 class="metric-value">{{ resumo.saldo_individual|brl }}</h2>
                 <span class="metric-trend {% if resumo.saldo_individual >= 0 %}text-success{% else %}text-danger{% endif %}">
                     <i class="fa-solid fa-user"></i>
                     Apenas seus lançamentos individuais
@@ -198,7 +199,7 @@
                             </div>
                             <div class="transaction-meta">
                                 <strong class="{% if lancamento.tipo == 'RECEITA' %}text-success{% else %}text-light{% endif %}">
-                                    {% if lancamento.tipo == "RECEITA" %}+{% else %}-{% endif %} R$ {{ lancamento.valor }}
+                                    {% if lancamento.tipo == "RECEITA" %}+{% else %}-{% endif %} {{ lancamento.valor|brl }}
                                 </strong>
                                 <span>{{ lancamento.data_competencia|date:"d/m" }}</span>
                             </div>
@@ -225,7 +226,7 @@
                                 <p>{{ item.membro.get_papel_display }} • {{ item.quantidade }} lançamento(s)</p>
                             </div>
                             <strong class="{% if item.saldo >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                R$ {{ item.saldo }}
+                                {{ item.saldo|brl }}
                             </strong>
                         </article>
                     {% endfor %}
@@ -249,7 +250,7 @@
                                     <h3>{{ categoria.categoria__nome }}</h3>
                                     <p>{{ categoria.quantidade }} lançamento(s)</p>
                                 </div>
-                                <strong>R$ {{ categoria.total }}</strong>
+                                <strong>{{ categoria.total|brl }}</strong>
                             </div>
                         </article>
                     {% empty %}
@@ -277,7 +278,7 @@
                             </div>
                             <div class="transaction-meta">
                                 <strong class="{% if lancamento.tipo == 'RECEITA' %}text-success{% else %}text-light{% endif %}">
-                                    {% if lancamento.tipo == "RECEITA" %}+{% else %}-{% endif %} R$ {{ lancamento.valor }}
+                                    {% if lancamento.tipo == "RECEITA" %}+{% else %}-{% endif %} {{ lancamento.valor|brl }}
                                 </strong>
                                 <span>{{ lancamento.data_competencia|date:"d/m" }}</span>
                             </div>

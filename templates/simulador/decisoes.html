@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load financeiro_extras %}
 
 {% block content %}
 <section class="hero-panel mb-4">
@@ -10,24 +11,24 @@
     {% if simulador_liberado %}
         <span class="status-pill status-paid">
             <i class="fa-solid fa-crown me-2"></i>
-            Premium liberado
+            Premium Liberado
         </span>
     {% else %}
         <form method="post" action="{% url 'checkout_premium' %}" class="d-inline">
             {% csrf_token %}
             <button type="submit" class="btn btn-premium">
                 <i class="fa-solid fa-lock-open me-2"></i>
-                Liberar no Premium
+                Assinar Plano de 30 Dias
             </button>
         </form>
     {% endif %}
 </section>
 
-<div class="dashboard-layout">
+<div class="decision-stack">
     <section class="card-modern card-body-modern decision-simulator-panel">
         <div class="panel-header mb-4">
             <div>
-                <h2 class="panel-title">Nova simulação</h2>
+                <h2 class="panel-title">Nova Simulação</h2>
                 <p class="panel-subtitle">Informe o valor, quantidade de parcelas e mês de início.</p>
             </div>
         </div>
@@ -86,7 +87,7 @@
                 <p>O simulador compara a compra com suas receitas, despesas e saldo previsto para mostrar se a decisão cabe no orçamento.</p>
                 <form method="post" action="{% url 'checkout_premium' %}">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-premium">Assinar Premium por R$ 10,50/mês</button>
+                    <button type="submit" class="btn btn-premium">Assinar Plano de 30 Dias</button>
                 </form>
             </div>
         {% endif %}
@@ -95,7 +96,7 @@
     <section class="card-modern card-body-modern decision-summary-panel">
         <div class="panel-header mb-4">
             <div>
-                <h2 class="panel-title">Leitura da decisão</h2>
+                <h2 class="panel-title">Leitura Da Decisão</h2>
                 <p class="panel-subtitle">O resultado aparece aqui depois da simulação.</p>
             </div>
         </div>
@@ -109,11 +110,11 @@
             <div class="decision-kpis">
                 <article class="goal-summary-card">
                     <span>Valor total</span>
-                    <strong>R$ {{ resultado.valor_total }}</strong>
+                    <strong>{{ resultado.valor_total|brl }}</strong>
                 </article>
                 <article class="goal-summary-card">
                     <span>Parcela</span>
-                    <strong>R$ {{ resultado.valor_parcela|floatformat:2 }}</strong>
+                    <strong>{{ resultado.valor_parcela|brl }}</strong>
                 </article>
                 <article class="goal-summary-card">
                     <span>Maior impacto</span>
@@ -159,12 +160,12 @@
                     {% for mes in resultado.meses %}
                         <tr>
                             <td>{{ mes.mes }}</td>
-                            <td>R$ {{ mes.receitas }}</td>
-                            <td>R$ {{ mes.despesas }}</td>
-                            <td>R$ {{ mes.saldo_previsto }}</td>
-                            <td>R$ {{ mes.impacto|floatformat:2 }}</td>
+                            <td>{{ mes.receitas|brl }}</td>
+                            <td>{{ mes.despesas|brl }}</td>
+                            <td>{{ mes.saldo_previsto|brl }}</td>
+                            <td>{{ mes.impacto|brl }}</td>
                             <td class="{% if mes.saldo_apos_decisao < 0 %}text-danger{% else %}text-success{% endif %}">
-                                R$ {{ mes.saldo_apos_decisao|floatformat:2 }}
+                                {{ mes.saldo_apos_decisao|brl }}
                             </td>
                             <td>{{ mes.comprometimento }}%</td>
                             <td>

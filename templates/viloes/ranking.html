@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load financeiro_extras %}
 
 {% block content %}
 <section class="hero-panel villain-hero mb-4">
@@ -32,7 +33,7 @@
             </div>
         </div>
         <p class="metric-label">Total investigado</p>
-        <h2 class="metric-value">R$ {{ total_despesas }}</h2>
+        <h2 class="metric-value">{{ total_despesas|brl }}</h2>
         <span class="metric-trend text-danger">
             <i class="fa-solid fa-arrow-trend-down"></i>
             Despesas do mês
@@ -46,7 +47,7 @@
             </div>
         </div>
         <p class="metric-label">Cartão</p>
-        <h2 class="metric-value">R$ {{ total_cartao }}</h2>
+        <h2 class="metric-value">{{ total_cartao|brl }}</h2>
         <span class="metric-trend text-info">
             <i class="fa-solid fa-receipt"></i>
             Fatura do período
@@ -60,7 +61,7 @@
             </div>
         </div>
         <p class="metric-label">Parceladas</p>
-        <h2 class="metric-value">R$ {{ total_parcelado }}</h2>
+        <h2 class="metric-value">{{ total_parcelado|brl }}</h2>
         <span class="metric-trend text-warning">
             <i class="fa-solid fa-calendar-days"></i>
             Compromissos futuros
@@ -107,7 +108,7 @@
                         <div class="villain-bar-fill" style="--percentual: {{ maior_vilao.percentual_css }}%;"></div>
                     </div>
                     <div class="villain-boss-footer">
-                        <strong>R$ {{ maior_vilao.total }}</strong>
+                        <strong>{{ maior_vilao.total|brl }}</strong>
                         <span>{{ maior_vilao.percentual }}% das despesas</span>
                     </div>
                 </div>
@@ -141,7 +142,7 @@
                     <div>
                         <div class="villain-signal-head">
                             <strong>{{ sinal.nome }}</strong>
-                            <span>R$ {{ sinal.total }}</span>
+                            <span>{{ sinal.total|brl }}</span>
                         </div>
                         <p>{{ sinal.mensagem }}</p>
                         <div class="villain-mini-progress">
@@ -183,7 +184,7 @@
                             <span>{{ vilao.apelido }} • {{ vilao.quantidade }} lançamento(s)</span>
                         </div>
                         <div class="villain-rank-value">
-                            <strong>R$ {{ vilao.total }}</strong>
+                            <strong>{{ vilao.total|brl }}</strong>
                             <span>{{ vilao.percentual }}%</span>
                         </div>
                     </div>
@@ -209,7 +210,7 @@
             {% if maior_lancamento %}
                 <p class="panel-subtitle">
                     Maior lançamento individual: {{ maior_lancamento.descricao_completa }} em {{ maior_lancamento.categoria.nome }},
-                    no valor de R$ {{ maior_lancamento.valor }}.
+                    no valor de {{ maior_lancamento.valor|brl }}.
                 </p>
             {% else %}
                 <p class="panel-subtitle">Quando houver despesas, o FinanPy mostrará qual lançamento merece revisão primeiro.</p>

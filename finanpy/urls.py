@@ -33,6 +33,33 @@ urlpatterns = [
     path("logout/", financeiro_views.sair_usuario, name="logout"),
     # Cadastro de novos usuarios em uma view nossa.
     path("cadastro/", financeiro_views.registrar_usuario, name="registrar_usuario"),
+    # Confirmação de e-mail do cadastro.
+    path("ativar-conta/<uidb64>/<token>/", financeiro_views.ativar_conta, name="ativar_conta"),
+    # Recuperação de senha usando as views nativas e seguras do Django.
+    path(
+        "senha/redefinir/",
+        auth_views.PasswordResetView.as_view(
+            template_name="registration/password_reset_form.html",
+            email_template_name="registration/password_reset_email.html",
+            subject_template_name="registration/password_reset_subject.txt",
+        ),
+        name="password_reset",
+    ),
+    path(
+        "senha/redefinir/enviado/",
+        auth_views.PasswordResetDoneView.as_view(template_name="registration/password_reset_done.html"),
+        name="password_reset_done",
+    ),
+    path(
+        "senha/redefinir/<uidb64>/<token>/",
+        financeiro_views.ConfirmarRedefinicaoSenhaView.as_view(),
+        name="password_reset_confirm",
+    ),
+    path(
+        "senha/redefinir/concluido/",
+        auth_views.PasswordResetCompleteView.as_view(template_name="registration/password_reset_complete.html"),
+        name="password_reset_complete",
+    ),
 ]
 
 if settings.DEBUG:

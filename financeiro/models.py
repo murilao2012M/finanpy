@@ -8,6 +8,37 @@ from django.contrib.auth.models import User
 from django.db import models
 
 
+class Notificacao(models.Model):
+    """Guarda alertas e movimentações importantes exibidas no sininho do painel."""
+
+    TIPO_INFO = "INFO"
+    TIPO_SUCESSO = "SUCESSO"
+    TIPO_ALERTA = "ALERTA"
+    TIPO_ERRO = "ERRO"
+    TIPO_CHOICES = [
+        (TIPO_INFO, "Informação"),
+        (TIPO_SUCESSO, "Sucesso"),
+        (TIPO_ALERTA, "Alerta"),
+        (TIPO_ERRO, "Erro"),
+    ]
+
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notificacoes")
+    titulo = models.CharField(max_length=120)
+    mensagem = models.TextField()
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES, default=TIPO_INFO)
+    link = models.CharField(max_length=255, blank=True)
+    lida = models.BooleanField(default=False)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criada_em", "-id"]
+        verbose_name = "Notificação"
+        verbose_name_plural = "Notificações"
+
+    def __str__(self):
+        return f"{self.titulo} - {self.usuario.username}"
+
+
 class Categoria(models.Model):
     """Agrupa lancamentos por finalidade financeira."""
 
@@ -146,10 +177,10 @@ class Lancamento(models.Model):
     FORMA_BOLETO = "BOLETO"
     FORMAS_PAGAMENTO = [
         (FORMA_DINHEIRO, "Dinheiro"),
-        (FORMA_DEBITO, "Cartao de Debito"),
-        (FORMA_CREDITO, "Cartao de Credito"),
+        (FORMA_DEBITO, "Cartão de Débito"),
+        (FORMA_CREDITO, "Cartão de Crédito"),
         (FORMA_PIX, "PIX"),
-        (FORMA_TRANSFERENCIA, "Transferencia"),
+        (FORMA_TRANSFERENCIA, "Transferência"),
         (FORMA_BOLETO, "Boleto"),
     ]
 
@@ -195,21 +226,24 @@ class Lancamento(models.Model):
 
     class Meta:
         ordering = ["-data_competencia", "-id"]
-        verbose_name = "Lancamento"
-        verbose_name_plural = "Lancamentos"
+        verbose_name = "Lançamento"
+        verbose_name_plural = "Lançamentos"
 
     def __str__(self):
         return f"{self.descricao} - R$ {self.valor}"
 
     @property
     def descricao_completa(self):
-        """Exibe a parcela junto da descricao quando existir parcelamento."""
+        """Exibe a parcela junto da descrição quando existir parcelamento."""
         if self.total_parcelas > 1:
             return f"{self.descricao} ({self.parcela_atual}/{self.total_parcelas})"
         return self.descricao
 
     def atualizar_status_automaticamente(self):
-        """Mantem o status coerente com datas de vencimento e pagamento."""
+        """Mantém o status coerente com datas de vencimento e pagamento."""
+        if self.status == self.STATUS_PAGO and not self.data_pagamento:
+            self.data_pagamento = date.today()
+
         if self.data_pagamento:
             self.status = self.STATUS_PAGO
         elif self.data_vencimento < date.today():
@@ -320,7 +354,7 @@ class MetaFinanceira(models.Model):
     STATUS_ATRASADA = "ATRASADA"
     STATUS_CHOICES = [
         (STATUS_EM_ANDAMENTO, "Em andamento"),
-        (STATUS_CONCLUIDA, "Concluida"),
+        (STATUS_CONCLUIDA, "Concluída"),
         (STATUS_PAUSADA, "Pausada"),
         (STATUS_ATRASADA, "Atrasada"),
     ]
@@ -330,8 +364,17 @@ class MetaFinanceira(models.Model):
     PRIORIDADE_ALTA = "ALTA"
     PRIORIDADE_CHOICES = [
         (PRIORIDADE_BAIXA, "Baixa"),
-        (PRIORIDADE_MEDIA, "Media"),
+        (PRIORIDADE_MEDIA, "Média"),
         (PRIORIDADE_ALTA, "Alta"),
+    ]
+
+    ESTRATEGIA_AGRESSIVA = "AGRESSIVA"
+    ESTRATEGIA_SUAVE = "SUAVE"
+    ESTRATEGIA_CONSERVADORA = "CONSERVADORA"
+    ESTRATEGIA_CHOICES = [
+        (ESTRATEGIA_AGRESSIVA, "Meta Agressiva"),
+        (ESTRATEGIA_SUAVE, "Meta Suave"),
+        (ESTRATEGIA_CONSERVADORA, "Meta Conservadora"),
     ]
 
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name="metas")
@@ -339,8 +382,10 @@ class MetaFinanceira(models.Model):
     descricao = models.TextField(blank=True)
     valor_alvo = models.DecimalField(max_digits=12, decimal_places=2)
     valor_atual = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    valor_semanal_planejado = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     data_inicio = models.DateField(default=date.today)
     data_limite = models.DateField()
+    estrategia = models.CharField(max_length=15, choices=ESTRATEGIA_CHOICES, default=ESTRATEGIA_SUAVE)
     prioridade = models.CharField(max_length=10, choices=PRIORIDADE_CHOICES, default=PRIORIDADE_MEDIA)
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default=STATUS_EM_ANDAMENTO)
     criada_em = models.DateTimeField(auto_now_add=True)
@@ -390,9 +435,13 @@ class MetaFinanceira(models.Model):
         """Mantem coerencia entre valores e status antes de gravar."""
         self.valor_alvo = Decimal(str(self.valor_alvo))
         self.valor_atual = Decimal(str(self.valor_atual))
+        self.valor_semanal_planejado = Decimal(str(self.valor_semanal_planejado or Decimal("0.00")))
 
         if self.valor_atual < Decimal("0.00"):
             self.valor_atual = Decimal("0.00")
+
+        if self.valor_semanal_planejado < Decimal("0.00"):
+            self.valor_semanal_planejado = Decimal("0.00")
 
         self.atualizar_status_automaticamente()
         super().save(*args, **kwargs)
@@ -493,11 +542,11 @@ class ConfiguracaoUsuario(models.Model):
     atualizada_em = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Configuracao do Usuario"
-        verbose_name_plural = "Configuracoes dos Usuarios"
+        verbose_name = "Configuração do Usuário"
+        verbose_name_plural = "Configurações dos Usuários"
 
     def __str__(self):
-        return f"Configuracoes de {self.usuario.username}"
+        return f"Configurações de {self.usuario.username}"
 
 
 class PlanoUsuario(models.Model):
@@ -611,7 +660,7 @@ class EventoAssinatura(models.Model):
     ORIGEM_CHOICES = [
         (ORIGEM_SISTEMA, "Sistema"),
         (ORIGEM_MERCADO_PAGO, "Mercado Pago"),
-        (ORIGEM_USUARIO, "Usuario"),
+        (ORIGEM_USUARIO, "Usuário"),
     ]
 
     usuario = models.ForeignKey(

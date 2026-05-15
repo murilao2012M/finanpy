@@ -7,9 +7,20 @@
             <div class="card-body-modern p-4 p-lg-5">
                 <span class="eyebrow">Metas</span>
                 <h1 class="page-title page-title-sm">{{ titulo }}</h1>
-                <p class="page-subtitle">Defina o objetivo, o valor desejado, o que você já acumulou e o prazo que quer atingir.</p>
+                <p class="page-subtitle">Defina o objetivo, escolha quanto pode guardar por semana e o FinanPy identifica a estratégia mais adequada.</p>
+                <div class="custom-alert custom-alert-info mb-4">
+                    <span>
+                        Meta Agressiva exige aportes maiores, Meta Suave equilibra esforço e prazo, e Meta Conservadora reduz a pressão semanal.
+                    </span>
+                </div>
+
                 <form method="post">
                     {% csrf_token %}
+                    {% if form.non_field_errors %}
+                        <div class="custom-alert custom-alert-error">
+                            <span>{{ form.non_field_errors|striptags }}</span>
+                        </div>
+                    {% endif %}
                     <div class="row">
                         {% for field in form %}
                             <div class="{% if field.name == 'descricao' %}col-12{% else %}col-md-6{% endif %} mb-3">
@@ -22,7 +33,7 @@
                         {% endfor %}
                     </div>
                     <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-premium">Salvar meta</button>
+                        <button type="submit" class="btn btn-premium">Salvar Meta</button>
                         <a href="{% url 'lista_metas' %}" class="btn btn-premium-outline">Cancelar</a>
                     </div>
                 </form>

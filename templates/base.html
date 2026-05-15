@@ -117,10 +117,43 @@
                         <button class="icon-button" type="button" id="themeToggle" aria-label="Alternar tema">
                             <i class="fa-regular fa-moon" id="themeToggleIcon"></i>
                         </button>
-                        <button class="icon-button" type="button" aria-label="Notificações">
-                            <i class="fa-regular fa-bell"></i>
-                            <span class="notification-dot"></span>
-                        </button>
+                        <div class="dropdown notification-menu">
+                            <button class="icon-button" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notificações">
+                                <i class="fa-regular fa-bell"></i>
+                                {% if notificacoes_nao_lidas %}
+                                    <span class="notification-dot"></span>
+                                {% endif %}
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-end notification-dropdown">
+                                <div class="notification-header">
+                                    <div>
+                                        <strong>Alertas</strong>
+                                        <span>{{ notificacoes_nao_lidas }} não lida(s)</span>
+                                    </div>
+                                    <form method="post" action="{% url 'marcar_notificacoes_lidas' %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="proximo" value="{{ request.path }}">
+                                        <button type="submit" class="btn btn-table-action">Marcar lidas</button>
+                                    </form>
+                                </div>
+                                <div class="notification-list">
+                                    {% for notificacao in notificacoes_recentes %}
+                                        <a href="{{ notificacao.link|default:'#' }}" class="notification-item {% if not notificacao.lida %}notification-unread{% endif %}">
+                                            <span class="notification-icon notification-{{ notificacao.tipo|lower }}">
+                                                <i class="fa-solid {% if notificacao.tipo == 'SUCESSO' %}fa-check{% elif notificacao.tipo == 'ALERTA' %}fa-triangle-exclamation{% elif notificacao.tipo == 'ERRO' %}fa-xmark{% else %}fa-circle-info{% endif %}"></i>
+                                            </span>
+                                            <span>
+                                                <strong>{{ notificacao.titulo }}</strong>
+                                                <small>{{ notificacao.mensagem }}</small>
+                                                <em>{{ notificacao.criada_em|date:"d/m/Y H:i" }}</em>
+                                            </span>
+                                        </a>
+                                    {% empty %}
+                                        <div class="empty-state-inline px-2">Nenhum alerta registrado ainda.</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
                         <div class="dropdown user-menu">
                             <button class="user-chip user-chip-button" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 {% if configuracao_usuario_atual and configuracao_usuario_atual.foto_perfil %}
@@ -191,6 +224,10 @@
     {% block content %}{% endblock %}
 
     {% if user.is_authenticated %}
+                    <footer class="panel-footer">
+                        <span>Painel FinanPy 2026</span>
+                        <strong>Todos os Direitos Reservados</strong>
+                    </footer>
                 </main>
             </div>
         </div>

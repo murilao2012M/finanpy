@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load financeiro_extras %}
 
 {% block content %}
 <section class="hero-panel mb-4">
@@ -33,7 +34,7 @@
             <p>O Modo Anti-descontrole cria um plano temporário de contenção, divide limites entre categorias e mostra quanto ainda pode gastar por dia.</p>
             <form method="post" action="{% url 'checkout_premium' %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-premium">Assinar Premium por R$ 10,50/mês</button>
+                <button type="submit" class="btn btn-premium">Assinar Plano de 30 Dias</button>
             </form>
         </div>
     </section>
@@ -41,15 +42,15 @@
     <div class="dashboard-grid dashboard-metrics mb-4">
         <article class="metric-card card-modern">
             <p class="metric-label">Orçamento restante</p>
-            <h2 class="metric-value">R$ {{ resumo.restante_total|floatformat:2 }}</h2>
+            <h2 class="metric-value">{{ resumo.restante_total|brl }}</h2>
             <span class="metric-trend text-success">
                 <i class="fa-solid fa-wallet"></i>
-                De R$ {{ plano_ativo.orcamento_total }}
+                De {{ plano_ativo.orcamento_total|brl }}
             </span>
         </article>
         <article class="metric-card card-modern">
             <p class="metric-label">Disponível por dia</p>
-            <h2 class="metric-value">R$ {{ resumo.gasto_por_dia|floatformat:2 }}</h2>
+            <h2 class="metric-value">{{ resumo.gasto_por_dia|brl }}</h2>
             <span class="metric-trend text-info">
                 <i class="fa-regular fa-calendar"></i>
                 {{ resumo.dias_restantes }} dia(s) restante(s)
@@ -57,7 +58,7 @@
         </article>
         <article class="metric-card card-modern">
             <p class="metric-label">Gasto no plano</p>
-            <h2 class="metric-value">R$ {{ resumo.gasto_total|floatformat:2 }}</h2>
+            <h2 class="metric-value">{{ resumo.gasto_total|brl }}</h2>
             <span class="metric-trend text-warning">
                 <i class="fa-solid fa-arrow-trend-up"></i>
                 Categorias monitoradas
@@ -92,7 +93,7 @@
                         <div class="goal-item-top">
                             <div>
                                 <h3>{{ categoria.nome }}</h3>
-                                <p>R$ {{ categoria.gasto|floatformat:2 }} gastos de R$ {{ categoria.limite|floatformat:2 }}</p>
+                                <p>{{ categoria.gasto|brl }} gastos de {{ categoria.limite|brl }}</p>
                             </div>
                             <span class="status-pill {% if categoria.nivel == 'CRITICO' %}status-overdue{% elif categoria.nivel == 'ATENCAO' %}status-pending{% else %}status-paid{% endif %}">
                                 {{ categoria.status_label }}
@@ -103,7 +104,7 @@
                         </div>
                         <div class="goal-item-footer">
                             <span>{{ categoria.percentual }}% usado</span>
-                            <span>Restam R$ {{ categoria.restante|floatformat:2 }}</span>
+                            <span>Restam {{ categoria.restante|brl }}</span>
                         </div>
                     </article>
                 {% empty %}
@@ -134,7 +135,7 @@
 
             <div class="containment-daily-tip">
                 <span>Limite recomendado para hoje</span>
-                <strong>R$ {{ resumo.gasto_por_dia|floatformat:2 }}</strong>
+                <strong>{{ resumo.gasto_por_dia|brl }}</strong>
             </div>
         </section>
     </div>

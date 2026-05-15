@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load financeiro_extras %}
 
 {% block extra_head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -34,7 +35,7 @@
             </button>
         </div>
         <p class="metric-label">Saldo atual</p>
-        <h2 class="metric-value">R$ {{ saldo_mes }}</h2>
+        <h2 class="metric-value">{{ saldo_mes|brl }}</h2>
         <span class="metric-trend text-success">
             <i class="fa-solid fa-caret-up"></i>
             Fluxo realizado no mês
@@ -51,7 +52,7 @@
             </button>
         </div>
         <p class="metric-label">Receitas</p>
-        <h2 class="metric-value">R$ {{ total_receitas }}</h2>
+        <h2 class="metric-value">{{ total_receitas|brl }}</h2>
         <span class="metric-trend text-success">
             <i class="fa-solid fa-caret-up"></i>
             Entradas do período filtrado
@@ -68,7 +69,7 @@
             </button>
         </div>
         <p class="metric-label">Despesas</p>
-        <h2 class="metric-value">R$ {{ total_despesas }}</h2>
+        <h2 class="metric-value">{{ total_despesas|brl }}</h2>
         <span class="metric-trend text-danger">
             <i class="fa-solid fa-caret-down"></i>
             Saídas do período filtrado
@@ -85,10 +86,10 @@
             </button>
         </div>
         <p class="metric-label">Investimentos</p>
-        <h2 class="metric-value">R$ {{ total_investimentos_atual }}</h2>
+        <h2 class="metric-value">{{ total_investimentos_atual|brl }}</h2>
         <span class="metric-trend {% if rentabilidade_investimentos >= 0 %}text-success{% else %}text-danger{% endif %}">
             <i class="fa-solid {% if rentabilidade_investimentos >= 0 %}fa-caret-up{% else %}fa-caret-down{% endif %}"></i>
-            Rentabilidade de R$ {{ rentabilidade_investimentos }}
+            Rentabilidade de {{ rentabilidade_investimentos|brl }}
         </span>
     </article>
 </div>
@@ -123,7 +124,7 @@
                 {% for item in despesas_por_categoria %}
                     <li>
                         <span>{{ item.categoria__nome }}</span>
-                        <strong>R$ {{ item.total }}</strong>
+                        <strong>{{ item.total|brl }}</strong>
                     </li>
                 {% empty %}
                     <li>
@@ -140,11 +141,11 @@
     <section class="card-modern card-body-modern ai-dashboard-card">
         <div class="panel-header ai-dashboard-header">
             <div>
-                <h2 class="panel-title">Assistente financeiro com IA</h2>
+                <h2 class="panel-title">Assistente Financeiro Com IA</h2>
                 <p class="panel-subtitle">Leitura inteligente do seu mês com alertas, oportunidades e plano de ação.</p>
             </div>
             <a href="{% url 'analise_ia' %}" class="btn btn-panel">
-                {% if ia_liberada %}Abrir análise{% else %}Conhecer premium{% endif %}
+                {% if ia_liberada %}Análise Financeira{% else %}Conhecer Premium{% endif %}
             </a>
         </div>
 
@@ -174,10 +175,10 @@
         {% else %}
             <div class="ai-upsell ai-dashboard-upsell">
                 <div>
-                    <strong>Premium com IA real</strong>
+                    <strong>Premium Com IA Real</strong>
                     <p>Receba resumo executivo, alertas prioritários e plano de ação com base nos seus dados financeiros.</p>
                 </div>
-                <a href="{% url 'configuracoes' %}" class="btn btn-premium">Fazer upgrade</a>
+                <a href="{% url 'configuracoes' %}" class="btn btn-premium">Assinar Plano de 30 Dias</a>
             </div>
         {% endif %}
     </section>
@@ -197,7 +198,7 @@
                         <h3>Saldo previsto</h3>
                         <p>Resultado estimado considerando receitas e despesas do período.</p>
                     </div>
-                    <strong class="{% if saldo_previsto >= 0 %}text-success{% else %}text-danger{% endif %}">R$ {{ saldo_previsto }}</strong>
+                    <strong class="{% if saldo_previsto >= 0 %}text-success{% else %}text-danger{% endif %}">{{ saldo_previsto|brl }}</strong>
                 </div>
             </article>
             <article class="goal-item">
@@ -206,7 +207,7 @@
                         <h3>Contas pendentes</h3>
                         <p>{{ quantidade_pendentes }} lançamento(s) aguardando pagamento.</p>
                     </div>
-                    <strong>R$ {{ total_pendentes }}</strong>
+                    <strong>{{ total_pendentes|brl }}</strong>
                 </div>
             </article>
             <article class="goal-item">
@@ -215,7 +216,7 @@
                         <h3>Contas atrasadas</h3>
                         <p>{{ quantidade_atrasados }} lançamento(s) já passaram do prazo.</p>
                     </div>
-                    <strong class="{% if total_atrasados > 0 %}text-danger{% endif %}">R$ {{ total_atrasados }}</strong>
+                    <strong class="{% if total_atrasados > 0 %}text-danger{% endif %}">{{ total_atrasados|brl }}</strong>
                 </div>
             </article>
         </div>
@@ -248,7 +249,7 @@
                     </div>
                     <div class="transaction-meta">
                         <strong class="{% if lancamento.tipo == 'RECEITA' %}text-success{% else %}text-light{% endif %}">
-                            {% if lancamento.tipo == "RECEITA" %}+{% else %}-{% endif %} R$ {{ lancamento.valor }}
+                            {% if lancamento.tipo == "RECEITA" %}+{% else %}-{% endif %} {{ lancamento.valor|brl }}
                         </strong>
                         <span>{{ lancamento.data_competencia|date:"d M" }}</span>
                     </div>
@@ -285,7 +286,7 @@
                     <div class="goal-item-top">
                         <div>
                             <h3>{{ meta.titulo }}</h3>
-                            <p>R$ {{ meta.valor_atual }} / R$ {{ meta.valor_alvo }}</p>
+                            <p>{{ meta.valor_atual|brl }} / {{ meta.valor_alvo|brl }}</p>
                         </div>
                         <span class="status-pill {% if meta.status == 'CONCLUIDA' %}status-paid{% elif meta.status == 'ATRASADA' %}status-overdue{% elif meta.status == 'PAUSADA' %}status-paused{% else %}status-pending{% endif %}">
                             {{ meta.get_status_display }}
@@ -296,7 +297,7 @@
                     </div>
                     <div class="goal-item-footer">
                         <span>{{ meta.progresso_percentual }}% concluído</span>
-                        <span>Faltam R$ {{ meta.valor_restante }}</span>
+                        <span>Faltam {{ meta.valor_restante|brl }}</span>
                     </div>
                 </article>
             {% empty %}
@@ -322,7 +323,7 @@
         <div class="goals-summary">
             <div class="goal-summary-card">
                 <span>Total aplicado</span>
-                <strong>R$ {{ total_investido }}</strong>
+                <strong>{{ total_investido|brl }}</strong>
             </div>
             <div class="goal-summary-card">
                 <span>Investimentos ativos</span>
@@ -345,16 +346,16 @@
                     <div class="goal-values">
                         <div>
                             <span class="goal-label">Aplicado</span>
-                            <strong>R$ {{ investimento.valor_aplicado }}</strong>
+                            <strong>{{ investimento.valor_aplicado|brl }}</strong>
                         </div>
                         <div>
                             <span class="goal-label">Atual</span>
-                            <strong>R$ {{ investimento.valor_atual }}</strong>
+                            <strong>{{ investimento.valor_atual|brl }}</strong>
                         </div>
                         <div>
                             <span class="goal-label">Rentabilidade</span>
                             <strong class="{% if investimento.rentabilidade_valor >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                R$ {{ investimento.rentabilidade_valor }}
+                                {{ investimento.rentabilidade_valor|brl }}
                             </strong>
                         </div>
                     </div>
@@ -390,11 +391,11 @@
                     <div class="goal-values">
                         <div>
                             <span class="goal-label">Limite</span>
-                            <strong>R$ {{ cartao.limite }}</strong>
+                            <strong>{{ cartao.limite|brl }}</strong>
                         </div>
                         <div>
                             <span class="goal-label">Fatura do mês</span>
-                            <strong>R$ {{ cartao.total_fatura|default:"0.00" }}</strong>
+                            <strong>{{ cartao.total_fatura|default:"0.00"|brl }}</strong>
                         </div>
                     </div>
                 </article>

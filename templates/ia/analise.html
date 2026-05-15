@@ -1,19 +1,20 @@
 {% extends "base.html" %}
+{% load financeiro_extras %}
 
 {% block content %}
 <section class="hero-panel mb-4">
     <div>
-        <span class="eyebrow">Premium intelligence</span>
-        <h1 class="page-title">Análise financeira com IA</h1>
+        <span class="eyebrow">Inteligência Premium</span>
+        <h1 class="page-title">Análise Financeira Com IA</h1>
         <p class="page-subtitle">O assistente premium do FinanPy interpreta seus números, identifica riscos e sugere próximos passos reais.</p>
     </div>
     <div class="toolbar-filter">
         {% if ia_liberada %}
-            <span class="status-pill status-paid"><i class="fa-solid fa-crown me-2"></i>IA liberada</span>
+            <span class="status-pill status-paid"><i class="fa-solid fa-crown me-2"></i>IA Liberada</span>
         {% else %}
             <form method="post" action="{% url 'checkout_premium' %}" class="d-inline">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-premium">Ativar Premium</button>
+                <button type="submit" class="btn btn-premium">Assinar Plano de 30 Dias</button>
             </form>
         {% endif %}
     </div>
@@ -23,7 +24,7 @@
     <section class="card-modern card-body-modern">
         <div class="panel-header mb-4">
             <div>
-                <h2 class="panel-title">Como a IA trabalha</h2>
+                <h2 class="panel-title">Como A IA Trabalha</h2>
                 <p class="panel-subtitle">Antes de responder, o FinanPy envia para a IA apenas o contexto financeiro consolidado do mês selecionado.</p>
             </div>
         </div>
@@ -31,11 +32,11 @@
         <div class="dashboard-grid ai-info-grid">
             <article class="goal-summary-card">
                 <span>Objetivo</span>
-                <strong>Resumo financeiro claro</strong>
+                <strong>Resumo Financeiro Claro</strong>
             </article>
             <article class="goal-summary-card">
                 <span>Entrega</span>
-                <strong>Alertas e plano de ação</strong>
+                <strong>Alertas E Plano De Ação</strong>
             </article>
             <article class="goal-summary-card">
                 <span>Plano</span>
@@ -45,7 +46,7 @@
 
         <div class="dashboard-layout ai-rules-layout mt-4">
             <div class="card-modern ai-mini-card">
-                <h3 class="panel-title mb-3">Objetivos da análise</h3>
+                <h3 class="panel-title mb-3">Objetivos Da Análise</h3>
                 <ul class="ai-bullet-list">
                     {% for item in objetivos_ia %}
                         <li>{{ item }}</li>
@@ -67,7 +68,7 @@
     <section class="card-modern card-body-modern">
         <div class="panel-header mb-4">
             <div>
-                <h2 class="panel-title">Gerar nova análise</h2>
+                <h2 class="panel-title">Gerar Nova Análise</h2>
                 <p class="panel-subtitle">Escolha o mês que será interpretado pela IA.</p>
             </div>
         </div>
@@ -88,7 +89,7 @@
                     </div>
                     <label for="{{ form.forcar_regeneracao.id_for_label }}" class="field-label mt-2">{{ form.forcar_regeneracao.label }}</label>
                 </div>
-                <button type="submit" class="btn btn-premium w-100">Gerar análise inteligente</button>
+                <button type="submit" class="btn btn-premium w-100">Análise Financeira</button>
             </form>
         {% else %}
             <div class="ai-upsell ai-upsell-vertical">
@@ -98,7 +99,7 @@
                 </div>
                 <form method="post" action="{% url 'checkout_premium' %}" class="w-100">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-premium w-100">Ir para o checkout Premium</button>
+                    <button type="submit" class="btn btn-premium w-100">Assinar Plano de 30 Dias</button>
                 </form>
             </div>
         {% endif %}
@@ -109,7 +110,7 @@
     <section class="card-modern card-body-modern">
         <div class="panel-header mb-4">
             <div>
-                <h2 class="panel-title">Leitura atual da IA</h2>
+                <h2 class="panel-title">Leitura Atual Da IA</h2>
                 <p class="panel-subtitle">A última análise gerada fica salva para consulta e comparação futura.</p>
             </div>
             {% if analise_atual %}
@@ -139,7 +140,7 @@
 
             <div class="dashboard-layout ai-rules-layout">
                 <div class="card-modern ai-mini-card">
-                    <h3 class="panel-title mb-3">Sinais positivos</h3>
+                    <h3 class="panel-title mb-3">Sinais Positivos</h3>
                     <ul class="ai-bullet-list">
                         {% for item in analise_atual.sinais_positivos %}
                             <li>{{ item }}</li>
@@ -148,7 +149,7 @@
                 </div>
 
                 <div class="card-modern ai-mini-card">
-                    <h3 class="panel-title mb-3">Alertas prioritários</h3>
+                    <h3 class="panel-title mb-3">Alertas Prioritários</h3>
                     <ul class="ai-bullet-list">
                         {% for item in analise_atual.alertas_prioritarios %}
                             <li>{{ item }}</li>
@@ -158,7 +159,7 @@
             </div>
 
             <section class="card-modern ai-mini-card mt-4">
-                <h3 class="panel-title mb-3">Oportunidades percebidas</h3>
+                <h3 class="panel-title mb-3">Oportunidades Percebidas</h3>
                 <ul class="ai-bullet-list">
                     {% for item in analise_atual.oportunidades %}
                         <li>{{ item }}</li>
@@ -167,7 +168,7 @@
             </section>
 
             <section class="card-modern ai-mini-card mt-4">
-                <h3 class="panel-title mb-3">Plano de ação recomendado</h3>
+                <h3 class="panel-title mb-3">Plano De Ação Recomendado</h3>
                 <div class="goal-list">
                     {% for acao in analise_atual.plano_acao %}
                         <article class="goal-item goal-item-page">
@@ -198,7 +199,7 @@
     <section class="card-modern card-body-modern">
         <div class="panel-header mb-4">
             <div>
-                <h2 class="panel-title">Histórico recente</h2>
+                <h2 class="panel-title">Histórico Recente</h2>
                 <p class="panel-subtitle">As últimas execuções ficam registradas na conta do usuário.</p>
             </div>
         </div>
