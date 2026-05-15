@@ -1289,7 +1289,7 @@ def perfil_usuario(request):
         elif "salvar_foto" in request.POST:
             foto_form = FotoPerfilForm(request.POST, request.FILES, instance=configuracao, prefix="foto")
             if foto_form.is_valid():
-                foto_form.save()
+                foto_form.save(configuracao)
                 messages.success(request, "Foto de perfil atualizada com sucesso.")
                 return redirect("perfil_usuario")
             messages.error(request, "Nao foi possivel atualizar a foto. Revise o arquivo enviado.")

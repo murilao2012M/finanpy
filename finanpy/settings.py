@@ -205,7 +205,7 @@ STATIC_URL = os.getenv("DJANGO_STATIC_URL", "/static/")
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-if pacote_instalado("whitenoise"):
+if pacote_instalado("whitenoise") and not DEBUG:
     STORAGES = {
         "default": {
             "BACKEND": "django.core.files.storage.FileSystemStorage",

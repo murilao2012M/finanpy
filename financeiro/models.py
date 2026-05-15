@@ -1,5 +1,6 @@
 """Models do sistema financeiro."""
 
+import base64
 from datetime import date
 from decimal import Decimal
 import uuid
@@ -539,6 +540,9 @@ class ConfiguracaoUsuario(models.Model):
     receber_alertas_vencimento = models.BooleanField(default=True)
     exibir_saldo_dashboard = models.BooleanField(default=True)
     foto_perfil = models.FileField(upload_to="perfis/", blank=True)
+    foto_perfil_binario = models.BinaryField(blank=True, null=True)
+    foto_perfil_content_type = models.CharField(max_length=100, blank=True)
+    foto_perfil_nome = models.CharField(max_length=255, blank=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -547,6 +551,35 @@ class ConfiguracaoUsuario(models.Model):
 
     def __str__(self):
         return f"Configurações de {self.usuario.username}"
+
+    @property
+    def foto_perfil_data_uri(self):
+        """Retorna a foto em formato data URI para funcionar tambem em producao."""
+        if not self.foto_perfil_binario or not self.foto_perfil_content_type:
+            return ""
+
+        dados = self.foto_perfil_binario
+        if isinstance(dados, memoryview):
+            dados = dados.tobytes()
+        else:
+            dados = bytes(dados)
+
+        imagem_base64 = base64.b64encode(dados).decode("ascii")
+        return f"data:{self.foto_perfil_content_type};base64,{imagem_base64}"
+
+    @property
+    def tem_foto_perfil(self):
+        """Indica se o usuario ja possui uma foto cadastrada."""
+        return bool(self.foto_perfil_binario or self.foto_perfil)
+
+    def atualizar_foto_perfil(self, arquivo):
+        """Salva a foto no banco para nao depender do armazenamento local do Render."""
+        arquivo.seek(0)
+        self.foto_perfil_binario = arquivo.read()
+        arquivo.seek(0)
+        self.foto_perfil_content_type = getattr(arquivo, "content_type", "") or "application/octet-stream"
+        self.foto_perfil_nome = arquivo.name[:255]
+        self.foto_perfil = ""
 
 
 class PlanoUsuario(models.Model):

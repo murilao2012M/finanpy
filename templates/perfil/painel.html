@@ -15,7 +15,9 @@
 
 <section class="profile-hero card-modern mb-4">
     <div class="profile-hero-main">
-        {% if configuracao_usuario.foto_perfil %}
+        {% if configuracao_usuario.foto_perfil_data_uri %}
+            <img src="{{ configuracao_usuario.foto_perfil_data_uri }}" alt="Foto de {{ user.first_name|default:user.username }}" class="profile-avatar-large">
+        {% elif configuracao_usuario.foto_perfil %}
             <img src="{{ configuracao_usuario.foto_perfil.url }}" alt="Foto de {{ user.first_name|default:user.username }}" class="profile-avatar-large">
         {% else %}
             <div class="profile-avatar-large profile-avatar-placeholder">

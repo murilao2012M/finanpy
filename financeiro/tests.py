@@ -6,11 +6,13 @@ import json
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
+from .forms import FotoPerfilForm
 from .mercado_pago import MercadoPagoClient, MercadoPagoErro, RespostaAssinaturaMercadoPago
-from .models import EventoAssinatura, PlanoUsuario
+from .models import ConfiguracaoUsuario, EventoAssinatura, PlanoUsuario
 from .views import sincronizar_plano_com_gateway, validar_assinatura_webhook_mercado_pago
 
 
@@ -115,6 +117,37 @@ class PlanoUsuarioBackendTests(TestCase):
         self.assertTrue(plano.ia_habilitada)
         self.assertTrue(EventoAssinatura.objects.filter(plano=plano, tipo=EventoAssinatura.TIPO_SINCRONIZACAO).exists())
         self.assertTrue(EventoAssinatura.objects.filter(plano=plano, tipo=EventoAssinatura.TIPO_PREMIUM_ATIVADO).exists())
+
+
+class PerfilUsuarioBackendTests(TestCase):
+    """Valida recursos sensiveis do perfil do usuario."""
+
+    def setUp(self):
+        """Cria usuario e configuracao para testar a foto de perfil."""
+        self.usuario = User.objects.create_user(
+            username="perfil",
+            email="perfil@finanpy.com",
+            password="senha-teste-123",
+        )
+        self.configuracao = ConfiguracaoUsuario.objects.create(usuario=self.usuario)
+
+    def test_foto_de_perfil_salva_no_banco_e_gera_data_uri(self):
+        """Garante que o avatar carregue em producao sem depender da pasta media."""
+        png_minimo = bytes.fromhex(
+            "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
+            "0000000a49444154789c636000000200015d0b2a0b0000000049454e44ae426082"
+        )
+        arquivo = SimpleUploadedFile("avatar.png", png_minimo, content_type="image/png")
+        form = FotoPerfilForm(files={"foto-foto_perfil": arquivo}, prefix="foto")
+
+        self.assertTrue(form.is_valid(), form.errors)
+
+        form.save(self.configuracao)
+        self.configuracao.refresh_from_db()
+
+        self.assertEqual(self.configuracao.foto_perfil_content_type, "image/png")
+        self.assertTrue(self.configuracao.foto_perfil_binario)
+        self.assertTrue(self.configuracao.foto_perfil_data_uri.startswith("data:image/png;base64,"))
 
 
 class MercadoPagoClientTests(TestCase):

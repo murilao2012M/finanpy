@@ -146,20 +146,17 @@ class MoedaPerfilForm(forms.ModelForm, BootstrapFormMixin):
         self.aplicar_bootstrap()
 
 
-class FotoPerfilForm(forms.ModelForm, BootstrapFormMixin):
+class FotoPerfilForm(forms.Form, BootstrapFormMixin):
     """Formulário para troca segura da foto do usuário."""
 
-    class Meta:
-        model = ConfiguracaoUsuario
-        fields = ["foto_perfil"]
-        labels = {
-            "foto_perfil": "Foto de perfil",
-        }
-        widgets = {
-            "foto_perfil": forms.FileInput(attrs={"accept": "image/png,image/jpeg,image/webp"}),
-        }
+    foto_perfil = forms.FileField(
+        label="Foto de perfil",
+        required=True,
+        widget=forms.FileInput(attrs={"accept": "image/*"}),
+    )
 
     def __init__(self, *args, **kwargs):
+        kwargs.pop("instance", None)
         super().__init__(*args, **kwargs)
         self.aplicar_bootstrap()
 
@@ -170,18 +167,38 @@ class FotoPerfilForm(forms.ModelForm, BootstrapFormMixin):
         if not arquivo:
             return arquivo
 
-        extensoes_permitidas = {".jpg", ".jpeg", ".png", ".webp", ".jfif"}
+        extensoes_permitidas = {".jpg", ".jpeg", ".png", ".webp", ".jfif", ".gif"}
+        tipos_permitidos = {"image/jpeg", "image/png", "image/webp", "image/gif"}
         nome_arquivo = arquivo.name.lower()
-        content_type = getattr(arquivo, "content_type", "")
+        content_type = getattr(arquivo, "content_type", "").lower()
+        extensao_valida = any(nome_arquivo.endswith(extensao) for extensao in extensoes_permitidas)
+        tipo_valido = content_type in tipos_permitidos
 
-        if not any(nome_arquivo.endswith(extensao) for extensao in extensoes_permitidas) and not content_type.startswith("image/"):
-            raise forms.ValidationError("Envie uma imagem nos formatos JPG, PNG ou WEBP.")
+        if not extensao_valida and not tipo_valido:
+            raise forms.ValidationError("Envie uma imagem válida nos formatos JPG, PNG, WEBP ou GIF.")
+
+        if content_type and not tipo_valido:
+            raise forms.ValidationError("Esse tipo de imagem não é aceito. Use JPG, PNG, WEBP ou GIF.")
 
         limite_bytes = 5 * 1024 * 1024
         if arquivo.size > limite_bytes:
             raise forms.ValidationError("A foto precisa ter no máximo 5 MB.")
 
         return arquivo
+
+    def save(self, configuracao):
+        """Grava a imagem no banco para ela carregar corretamente em producao."""
+        configuracao.atualizar_foto_perfil(self.cleaned_data["foto_perfil"])
+        configuracao.save(
+            update_fields=[
+                "foto_perfil",
+                "foto_perfil_binario",
+                "foto_perfil_content_type",
+                "foto_perfil_nome",
+                "atualizada_em",
+            ]
+        )
+        return configuracao
 
 
 class AlterarSenhaPerfilForm(BootstrapFormMixin, forms.Form):
