@@ -205,23 +205,30 @@
 
                 <main class="content-area">
                     {% if messages %}
-                        {% for message in messages %}
-                            <div class="custom-alert custom-alert-{{ message.tags|default:'info' }}">
-                                <span>{{ message }}</span>
-                                <button type="button" class="alert-close" aria-label="Fechar">
-                                    <i class="fa-solid fa-xmark"></i>
-                                </button>
-                            </div>
-                        {% endfor %}
+                        <div class="message-stack" aria-live="polite" aria-atomic="true">
+                            {% for message in messages %}
+                                <div class="custom-alert message-toast custom-alert-{{ message.tags|default:'info' }}" data-auto-dismiss="true">
+                                    <span>{{ message }}</span>
+                                    <button type="button" class="alert-close" aria-label="Fechar">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
+                            {% endfor %}
+                        </div>
                     {% endif %}
     {% else %}
         <main class="auth-shell">
             {% if messages %}
-                {% for message in messages %}
-                    <div class="custom-alert custom-alert-{{ message.tags|default:'info' }}">
-                        <span>{{ message }}</span>
-                    </div>
-                {% endfor %}
+                <div class="message-stack" aria-live="polite" aria-atomic="true">
+                    {% for message in messages %}
+                        <div class="custom-alert message-toast custom-alert-{{ message.tags|default:'info' }}" data-auto-dismiss="true">
+                            <span>{{ message }}</span>
+                            <button type="button" class="alert-close" aria-label="Fechar">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    {% endfor %}
+                </div>
             {% endif %}
     {% endif %}
 
@@ -281,13 +288,27 @@
             });
         }
 
+        function dismissAlert(alert) {
+            if (!alert || alert.classList.contains("is-hiding")) {
+                return;
+            }
+
+            alert.classList.add("is-hiding");
+            window.setTimeout(function () {
+                alert.remove();
+            }, 360);
+        }
+
         document.querySelectorAll(".alert-close").forEach(function (button) {
             button.addEventListener("click", function () {
-                const alert = button.closest(".custom-alert");
-                if (alert) {
-                    alert.remove();
-                }
+                dismissAlert(button.closest(".custom-alert"));
             });
+        });
+
+        document.querySelectorAll(".message-toast[data-auto-dismiss='true']").forEach(function (alert, index) {
+            window.setTimeout(function () {
+                dismissAlert(alert);
+            }, 5200 + index * 700);
         });
     </script>
     {% block extra_js %}{% endblock %}
