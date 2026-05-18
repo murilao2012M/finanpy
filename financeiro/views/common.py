@@ -1122,8 +1122,9 @@ def mensagem_erro_email_transacional(erro):
 
     if isinstance(erro, (smtplib.SMTPConnectError, smtplib.SMTPServerDisconnected, TimeoutError, socket.timeout, OSError)):
         return (
-            "O FinanPy não conseguiu conectar ao servidor SMTP. Confira EMAIL_HOST=smtp-relay.brevo.com, "
-            "EMAIL_PORT=587, EMAIL_USE_TLS=True e EMAIL_USE_SSL=False."
+            "O FinanPy não conseguiu conectar ao servidor SMTP. No Render Free, as portas SMTP 25, 465 e 587 podem "
+            "ficar bloqueadas. Use EMAIL_HOST=smtp-relay.brevo.com, EMAIL_PORT=2525, EMAIL_USE_TLS=True e "
+            "EMAIL_USE_SSL=False."
         )
 
     return (
