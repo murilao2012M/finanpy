@@ -111,7 +111,23 @@ def registrar_usuario(request):
             usuario.is_active = False
             usuario.email = form.cleaned_data["email"].strip().lower()
             usuario.save()
-            enviar_email_confirmacao_cadastro(request, usuario)
+            try:
+                enviar_email_confirmacao_cadastro(request, usuario)
+            except Exception:
+                logger.exception("Falha ao enviar e-mail de confirmacao para novo cadastro.")
+                usuario.delete()
+                form.add_error(
+                    "email",
+                    (
+                        "Não foi possível enviar o e-mail de confirmação agora. "
+                        "Verifique se o endereço está correto ou tente novamente em alguns minutos."
+                    ),
+                )
+                messages.error(
+                    request,
+                    "O cadastro não foi concluído porque o e-mail de confirmação não pôde ser enviado.",
+                )
+                return render(request, "registration/register.html", {"form": form})
             messages.success(
                 request,
                 "Cadastro criado com sucesso. Enviamos um e-mail de confirmação para ativar sua conta.",

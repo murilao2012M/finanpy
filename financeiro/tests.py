@@ -185,6 +185,39 @@ class PerfilUsuarioBackendTests(TestCase):
         self.assertTrue(self.configuracao.foto_perfil_data_uri.startswith("data:image/png;base64,"))
 
 
+class CadastroUsuarioEmailTests(TestCase):
+    """Garante que falhas de SMTP nao derrubem o cadastro em producao."""
+
+    def dados_cadastro(self, username="novo-cliente", email="novo@finanpy.com"):
+        """Retorna payload valido para o formulario nativo de cadastro."""
+        return {
+            "username": username,
+            "first_name": "Novo Cliente",
+            "email": email,
+            "password1": "Senha-forte-123",
+            "password2": "Senha-forte-123",
+        }
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_cadastro_cria_usuario_inativo_quando_email_e_enviado(self):
+        """Cadastro bem-sucedido cria usuario inativo e redireciona para login."""
+        resposta = self.client.post(reverse("registrar_usuario"), self.dados_cadastro())
+
+        usuario = User.objects.get(username="novo-cliente")
+        self.assertEqual(resposta.status_code, 302)
+        self.assertEqual(resposta["Location"], reverse("login"))
+        self.assertFalse(usuario.is_active)
+
+    def test_falha_no_envio_de_email_nao_gera_internal_server_error(self):
+        """Se o SMTP falhar, a tela volta com erro e o usuario nao fica preso inativo."""
+        with patch("financeiro.views.auth.enviar_email_confirmacao_cadastro", side_effect=Exception("SMTP fora")):
+            resposta = self.client.post(reverse("registrar_usuario"), self.dados_cadastro())
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(User.objects.filter(username="novo-cliente").exists())
+        self.assertContains(resposta, "e-mail de confirmação")
+
+
 class AnaliseFinanceiraLocalTests(TestCase):
     """Garante que a inteligencia financeira local funcione sem API externa."""
 
