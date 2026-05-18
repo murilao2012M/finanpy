@@ -8,6 +8,16 @@ from django.conf import settings
 from django.core.mail.backends.base import BaseEmailBackend
 
 
+class BrevoAPIEmailError(Exception):
+    """Erro controlado para falhas da API transacional da Brevo."""
+
+    def __init__(self, message, status_code=None, body=""):
+        super().__init__(message)
+        self.message = message
+        self.status_code = status_code
+        self.body = body
+
+
 class BrevoAPIEmailBackend(BaseEmailBackend):
     """Envia e-mails transacionais pela API HTTP da Brevo.
 
@@ -29,7 +39,7 @@ class BrevoAPIEmailBackend(BaseEmailBackend):
         if not self.api_key:
             if self.fail_silently:
                 return 0
-            raise ValueError("BREVO_API_KEY não está configurada.")
+            raise BrevoAPIEmailError("BREVO_API_KEY não está configurada.", status_code="MISSING_API_KEY")
 
         enviados = 0
         for email_message in email_messages:
@@ -100,7 +110,15 @@ class BrevoAPIEmailBackend(BaseEmailBackend):
                 if 200 <= resposta.status < 300:
                     return True
                 corpo = resposta.read().decode("utf-8", errors="replace")
-                raise ValueError(f"Brevo API retornou status {resposta.status}: {corpo}")
+                raise BrevoAPIEmailError(
+                    f"Brevo API retornou status {resposta.status}.",
+                    status_code=resposta.status,
+                    body=corpo,
+                )
         except error.HTTPError as exc:
             corpo = exc.read().decode("utf-8", errors="replace")
-            raise ValueError(f"Brevo API retornou status {exc.code}: {corpo}") from exc
+            raise BrevoAPIEmailError(
+                f"Brevo API retornou status {exc.code}.",
+                status_code=exc.code,
+                body=corpo,
+            ) from exc

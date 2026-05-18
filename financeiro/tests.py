@@ -16,7 +16,7 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
 from .forms import FotoPerfilForm
-from .email_backends import BrevoAPIEmailBackend
+from .email_backends import BrevoAPIEmailBackend, BrevoAPIEmailError
 from .ia_financeira import MODELO_ANALISE_LOCAL, gerar_analise_financeira_local
 from .mercado_pago import MercadoPagoClient, MercadoPagoErro, RespostaAssinaturaMercadoPago
 from .models import CartaoCredito, Categoria, ConfiguracaoUsuario, EventoAssinatura, Lancamento, MetaFinanceira, Notificacao, PlanoUsuario
@@ -264,6 +264,24 @@ class CadastroUsuarioEmailTests(TestCase):
         self.assertEqual(payloads[0]["sender"]["email"], "suporte@finanpy.com.br")
         self.assertEqual(payloads[0]["to"][0]["email"], "cliente@exemplo.com")
         self.assertEqual(payloads[0]["subject"], "Confirme seu cadastro")
+
+    def test_traduz_brevo_api_key_ausente(self):
+        """Erro de API Key ausente precisa ser direto para configurar no Render."""
+        mensagem = mensagem_erro_email_transacional(
+            BrevoAPIEmailError("BREVO_API_KEY não está configurada.", status_code="MISSING_API_KEY")
+        )
+
+        self.assertIn("BREVO_API_KEY", mensagem)
+        self.assertIn("API Keys", mensagem)
+
+    def test_traduz_brevo_api_key_recusada(self):
+        """Erro 401/403 precisa orientar que API Key nao e SMTP Key."""
+        mensagem = mensagem_erro_email_transacional(
+            BrevoAPIEmailError("Brevo API retornou status 401.", status_code=401, body='{"message":"Unauthorized"}')
+        )
+
+        self.assertIn("API Key", mensagem)
+        self.assertIn("não a SMTP Key", mensagem)
 
 
 class AnaliseFinanceiraLocalTests(TestCase):

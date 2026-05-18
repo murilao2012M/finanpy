@@ -52,6 +52,7 @@ from ..forms import (
     RegistroUsuarioForm,
     SimuladorDecisaoForm,
 )
+from ..email_backends import BrevoAPIEmailError
 from ..ia_financeira import (
     MODELO_ANALISE_LOCAL,
     OBJETIVO_ANALISE_IA,
@@ -1099,6 +1100,40 @@ def enviar_email_confirmacao_cadastro(request, usuario):
 
 def mensagem_erro_email_transacional(erro):
     """Traduz falhas comuns de SMTP em mensagens acionaveis sem expor senhas."""
+    if isinstance(erro, BrevoAPIEmailError):
+        status = erro.status_code
+        corpo = str(erro.body or "").lower()
+
+        if status == "MISSING_API_KEY":
+            return (
+                "A variável BREVO_API_KEY não está configurada no Render. Crie uma API Key na Brevo em "
+                "SMTP & API > API Keys e salve no Environment do Render."
+            )
+
+        if status in {401, 403}:
+            return (
+                "A API Key da Brevo foi recusada. Confira se BREVO_API_KEY é uma API Key válida da Brevo, "
+                "não a SMTP Key, e se ela foi salva no Environment do Render antes do redeploy."
+            )
+
+        if status == 429:
+            return "A Brevo recusou o envio por limite de requisições ou quota. Verifique o painel transacional da Brevo."
+
+        if status == 400 and any(palavra in corpo for palavra in ["sender", "remetente", "from", "email"]):
+            return (
+                "A Brevo recusou o remetente. Confira se DEFAULT_FROM_EMAIL usa exatamente um remetente verificado "
+                "na Brevo, por exemplo: FinanPy <suporte.finanpy@gmail.com>."
+            )
+
+        resumo = str(erro.body or erro.message or "")[:240]
+        return f"A API da Brevo recusou o envio. Status: {status}. Detalhe: {resumo}"
+
+    if isinstance(erro, ValueError) and "BREVO_API_KEY" in str(erro):
+        return (
+            "A variável BREVO_API_KEY não está configurada no Render. Crie uma API Key na Brevo em "
+            "SMTP & API > API Keys e salve no Environment do Render."
+        )
+
     if isinstance(erro, smtplib.SMTPAuthenticationError):
         return (
             "A Brevo recusou o login SMTP. Confira EMAIL_HOST_USER e EMAIL_HOST_PASSWORD. "
