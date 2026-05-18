@@ -6,6 +6,7 @@ import json
 from calendar import monthrange
 from datetime import date, timedelta
 from decimal import Decimal
+import smtplib
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
@@ -36,6 +37,7 @@ from .views import (
     obter_proxima_conta_importante,
     prever_conclusao_meta,
     prever_fechamento_mes,
+    mensagem_erro_email_transacional,
     sugerir_valor_para_guardar,
     sincronizar_plano_com_gateway,
     validar_assinatura_webhook_mercado_pago,
@@ -216,6 +218,22 @@ class CadastroUsuarioEmailTests(TestCase):
         self.assertEqual(resposta.status_code, 200)
         self.assertFalse(User.objects.filter(username="novo-cliente").exists())
         self.assertContains(resposta, "e-mail de confirmação")
+
+    def test_traduz_erro_de_autenticacao_smtp(self):
+        """Erro de login SMTP precisa apontar para credenciais da Brevo."""
+        erro = smtplib.SMTPAuthenticationError(535, b"Authentication failed")
+
+        mensagem = mensagem_erro_email_transacional(erro)
+
+        self.assertIn("SMTP Key da Brevo", mensagem)
+
+    def test_traduz_erro_de_remetente_recusado(self):
+        """Erro de remetente precisa orientar sobre DEFAULT_FROM_EMAIL."""
+        erro = smtplib.SMTPSenderRefused(550, "Sender rejected", "suporte@finanpy.com")
+
+        mensagem = mensagem_erro_email_transacional(erro)
+
+        self.assertIn("DEFAULT_FROM_EMAIL", mensagem)
 
 
 class AnaliseFinanceiraLocalTests(TestCase):

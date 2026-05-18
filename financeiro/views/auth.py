@@ -113,20 +113,22 @@ def registrar_usuario(request):
             usuario.save()
             try:
                 enviar_email_confirmacao_cadastro(request, usuario)
-            except Exception:
-                logger.exception("Falha ao enviar e-mail de confirmacao para novo cadastro.")
+            except Exception as erro:
+                mensagem_email = mensagem_erro_email_transacional(erro)
+                logger.exception(
+                    "Falha ao enviar e-mail de confirmacao para novo cadastro. "
+                    "backend=%s host=%s port=%s tls=%s ssl=%s from=%s user_configurado=%s",
+                    settings.EMAIL_BACKEND,
+                    settings.EMAIL_HOST,
+                    settings.EMAIL_PORT,
+                    settings.EMAIL_USE_TLS,
+                    settings.EMAIL_USE_SSL,
+                    settings.DEFAULT_FROM_EMAIL,
+                    bool(settings.EMAIL_HOST_USER),
+                )
                 usuario.delete()
-                form.add_error(
-                    "email",
-                    (
-                        "Não foi possível enviar o e-mail de confirmação agora. "
-                        "Verifique se o endereço está correto ou tente novamente em alguns minutos."
-                    ),
-                )
-                messages.error(
-                    request,
-                    "O cadastro não foi concluído porque o e-mail de confirmação não pôde ser enviado.",
-                )
+                form.add_error("email", mensagem_email)
+                messages.error(request, mensagem_email)
                 return render(request, "registration/register.html", {"form": form})
             messages.success(
                 request,

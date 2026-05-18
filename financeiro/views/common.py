@@ -7,6 +7,8 @@ import hashlib
 import hmac
 import json
 import logging
+import smtplib
+import socket
 import unicodedata
 import uuid
 
@@ -1094,6 +1096,40 @@ def enviar_email_confirmacao_cadastro(request, usuario):
         "Se você não criou esta conta, ignore este e-mail."
     )
     send_mail(assunto, mensagem, settings.DEFAULT_FROM_EMAIL, [usuario.email], fail_silently=False)
+
+def mensagem_erro_email_transacional(erro):
+    """Traduz falhas comuns de SMTP em mensagens acionaveis sem expor senhas."""
+    if isinstance(erro, smtplib.SMTPAuthenticationError):
+        return (
+            "A Brevo recusou o login SMTP. Confira EMAIL_HOST_USER e EMAIL_HOST_PASSWORD. "
+            "O password precisa ser a SMTP Key da Brevo, não a senha do Gmail, não a senha da conta Brevo e não a API Key."
+        )
+
+    if isinstance(erro, smtplib.SMTPSenderRefused):
+        return (
+            "A Brevo recusou o remetente configurado. Confira se DEFAULT_FROM_EMAIL usa exatamente um remetente verificado "
+            "na Brevo, por exemplo: FinanPy <suporte.finanpy@gmail.com>."
+        )
+
+    if isinstance(erro, smtplib.SMTPRecipientsRefused):
+        return "A Brevo recusou o e-mail de destino. Teste com outro e-mail e verifique se o endereço não está bloqueado."
+
+    if isinstance(erro, smtplib.SMTPDataError):
+        return (
+            "A Brevo conectou, mas recusou o conteúdo ou a política de envio. Verifique se o remetente está liberado, "
+            "se sua conta SMTP transacional está ativa e se não existe bloqueio de quota/compliance."
+        )
+
+    if isinstance(erro, (smtplib.SMTPConnectError, smtplib.SMTPServerDisconnected, TimeoutError, socket.timeout, OSError)):
+        return (
+            "O FinanPy não conseguiu conectar ao servidor SMTP. Confira EMAIL_HOST=smtp-relay.brevo.com, "
+            "EMAIL_PORT=587, EMAIL_USE_TLS=True e EMAIL_USE_SSL=False."
+        )
+
+    return (
+        "Não foi possível enviar o e-mail de confirmação. Abra os logs do Render para ver o erro técnico completo "
+        "e confira as credenciais SMTP da Brevo."
+    )
 
 def calcular_percentual_limite(total_usado, limite_total):
     """Calcula o percentual visual de uso sem ultrapassar 100%."""
