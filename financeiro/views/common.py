@@ -52,7 +52,7 @@ from ..forms import (
     RegistroUsuarioForm,
     SimuladorDecisaoForm,
 )
-from ..email_backends import BrevoAPIEmailError
+from ..email_backends import BrevoAPIEmailError, mascarar_brevo_api_key
 from ..ia_financeira import (
     MODELO_ANALISE_LOCAL,
     OBJETIVO_ANALISE_IA,

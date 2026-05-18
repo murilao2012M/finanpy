@@ -16,7 +16,7 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
 from .forms import FotoPerfilForm
-from .email_backends import BrevoAPIEmailBackend, BrevoAPIEmailError
+from .email_backends import BrevoAPIEmailBackend, BrevoAPIEmailError, mascarar_brevo_api_key
 from .ia_financeira import MODELO_ANALISE_LOCAL, gerar_analise_financeira_local
 from .mercado_pago import MercadoPagoClient, MercadoPagoErro, RespostaAssinaturaMercadoPago
 from .models import CartaoCredito, Categoria, ConfiguracaoUsuario, EventoAssinatura, Lancamento, MetaFinanceira, Notificacao, PlanoUsuario
@@ -264,6 +264,14 @@ class CadastroUsuarioEmailTests(TestCase):
         self.assertEqual(payloads[0]["sender"]["email"], "suporte@finanpy.com.br")
         self.assertEqual(payloads[0]["to"][0]["email"], "cliente@exemplo.com")
         self.assertEqual(payloads[0]["subject"], "Confirme seu cadastro")
+
+    @override_settings(BREVO_API_KEY="  'xkeysib-chave-teste'  ")
+    def test_backend_brevo_api_limpa_aspas_e_espacos_da_chave(self):
+        """Render pode receber chaves com aspas ou espacos colados na copia."""
+        backend = BrevoAPIEmailBackend()
+
+        self.assertEqual(backend.api_key, "xkeysib-chave-teste")
+        self.assertIn("xkeysib-", mascarar_brevo_api_key(backend.api_key))
 
     def test_traduz_brevo_api_key_ausente(self):
         """Erro de API Key ausente precisa ser direto para configurar no Render."""

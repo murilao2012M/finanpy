@@ -117,7 +117,7 @@ def registrar_usuario(request):
                 mensagem_email = mensagem_erro_email_transacional(erro)
                 logger.exception(
                     "Falha ao enviar e-mail de confirmacao para novo cadastro. "
-                    "backend=%s host=%s port=%s tls=%s ssl=%s from=%s user_configurado=%s",
+                    "backend=%s host=%s port=%s tls=%s ssl=%s from=%s user_configurado=%s brevo_api_key=%s",
                     settings.EMAIL_BACKEND,
                     settings.EMAIL_HOST,
                     settings.EMAIL_PORT,
@@ -125,6 +125,7 @@ def registrar_usuario(request):
                     settings.EMAIL_USE_SSL,
                     settings.DEFAULT_FROM_EMAIL,
                     bool(settings.EMAIL_HOST_USER),
+                    mascarar_brevo_api_key(getattr(settings, "BREVO_API_KEY", "")),
                 )
                 usuario.delete()
                 form.add_error("email", mensagem_email)

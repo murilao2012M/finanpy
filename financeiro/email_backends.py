@@ -8,6 +8,22 @@ from django.conf import settings
 from django.core.mail.backends.base import BaseEmailBackend
 
 
+def normalizar_brevo_api_key(valor):
+    """Remove caracteres comuns de copia que tornam a API Key invalida."""
+    return str(valor or "").strip().strip('"').strip("'").strip()
+
+
+def mascarar_brevo_api_key(valor):
+    """Exibe apenas sinais seguros da chave para diagnostico em log."""
+    chave = normalizar_brevo_api_key(valor)
+    if not chave:
+        return "ausente"
+
+    prefixo = chave[:8]
+    sufixo = chave[-4:] if len(chave) >= 4 else ""
+    return f"{prefixo}...{sufixo} (len={len(chave)})"
+
+
 class BrevoAPIEmailError(Exception):
     """Erro controlado para falhas da API transacional da Brevo."""
 
@@ -27,7 +43,7 @@ class BrevoAPIEmailBackend(BaseEmailBackend):
 
     def __init__(self, *args, api_key=None, api_url=None, timeout=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.api_key = api_key or getattr(settings, "BREVO_API_KEY", "")
+        self.api_key = normalizar_brevo_api_key(api_key or getattr(settings, "BREVO_API_KEY", ""))
         self.api_url = api_url or getattr(settings, "BREVO_API_URL", "https://api.brevo.com/v3/smtp/email")
         self.timeout = timeout or getattr(settings, "BREVO_API_TIMEOUT", 20)
 
