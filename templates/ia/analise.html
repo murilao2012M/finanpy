@@ -5,12 +5,12 @@
 <section class="hero-panel mb-4">
     <div>
         <span class="eyebrow">Inteligência Premium</span>
-        <h1 class="page-title">Análise Financeira Com IA</h1>
-        <p class="page-subtitle">O assistente premium do FinanPy interpreta seus números, identifica riscos e sugere próximos passos reais.</p>
+        <h1 class="page-title">Análise Financeira Inteligente</h1>
+        <p class="page-subtitle">O motor local do FinanPy interpreta seus números, identifica riscos e sugere próximos passos reais.</p>
     </div>
     <div class="toolbar-filter">
         {% if ia_liberada %}
-            <span class="status-pill status-paid"><i class="fa-solid fa-crown me-2"></i>IA Liberada</span>
+            <span class="status-pill status-paid"><i class="fa-solid fa-crown me-2"></i>Inteligência Liberada</span>
         {% else %}
             <form method="post" action="{% url 'checkout_premium' %}" class="d-inline">
                 {% csrf_token %}
@@ -24,8 +24,8 @@
     <section class="card-modern card-body-modern">
         <div class="panel-header mb-4">
             <div>
-                <h2 class="panel-title">Como A IA Trabalha</h2>
-                <p class="panel-subtitle">Antes de responder, o FinanPy envia para a IA apenas o contexto financeiro consolidado do mês selecionado.</p>
+                <h2 class="panel-title">Como A Inteligência Trabalha</h2>
+                <p class="panel-subtitle">O FinanPy processa localmente o contexto financeiro consolidado do mês selecionado, sem depender de API externa.</p>
             </div>
         </div>
 
@@ -55,7 +55,7 @@
             </div>
 
             <div class="card-modern ai-mini-card">
-                <h3 class="panel-title mb-3">Regras da IA</h3>
+                <h3 class="panel-title mb-3">Regras Da Inteligência</h3>
                 <ul class="ai-bullet-list">
                     {% for item in regras_ia %}
                         <li>{{ item }}</li>
@@ -69,7 +69,7 @@
         <div class="panel-header mb-4">
             <div>
                 <h2 class="panel-title">Gerar Nova Análise</h2>
-                <p class="panel-subtitle">Escolha o mês que será interpretado pela IA.</p>
+                <p class="panel-subtitle">Escolha o mês que será interpretado pelo motor inteligente do FinanPy.</p>
             </div>
         </div>
 
@@ -110,7 +110,7 @@
     <section class="card-modern card-body-modern">
         <div class="panel-header mb-4">
             <div>
-                <h2 class="panel-title">Leitura Atual Da IA</h2>
+                <h2 class="panel-title">Leitura Atual Da Inteligência</h2>
                 <p class="panel-subtitle">A última análise gerada fica salva para consulta e comparação futura.</p>
             </div>
             {% if analise_atual %}
@@ -127,6 +127,30 @@
                     <span class="panel-chip">{{ analise_atual.modelo }}</span>
                 </div>
                 <p class="ai-highlight-summary">{{ analise_atual.resumo_executivo }}</p>
+            </div>
+
+            <div class="dashboard-layout ai-rules-layout mb-4">
+                <div class="card-modern ai-mini-card">
+                    <h3 class="panel-title mb-3">Ações Para 7 Dias</h3>
+                    <ul class="ai-bullet-list">
+                        {% for acao in diagnostico_visual.acoes_7_dias %}
+                            <li><strong>{{ acao.titulo }}</strong> · {{ acao.descricao }}</li>
+                        {% empty %}
+                            <li>Nenhuma ação urgente foi identificada para os próximos 7 dias.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <div class="card-modern ai-mini-card">
+                    <h3 class="panel-title mb-3">Ações Para 30 Dias</h3>
+                    <ul class="ai-bullet-list">
+                        {% for acao in diagnostico_visual.acoes_30_dias %}
+                            <li><strong>{{ acao.titulo }}</strong> · {{ acao.descricao }}</li>
+                        {% empty %}
+                            <li>Mantenha lançamentos atualizados para receber um plano de 30 dias mais preciso.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
             </div>
 
             <div class="ai-metrics-grid mb-4">
@@ -191,7 +215,7 @@
             </div>
         {% else %}
             <div class="empty-state-inline">
-                Nenhuma análise foi gerada até agora. Quando você executar a IA, o resultado aparecerá aqui.
+                Nenhuma análise foi gerada até agora. Quando você executar a inteligência local, o resultado aparecerá aqui.
             </div>
         {% endif %}
     </section>
@@ -223,7 +247,7 @@
                     {% endif %}
                 </article>
             {% empty %}
-                <div class="empty-state-inline">O histórico da IA ainda está vazio.</div>
+                <div class="empty-state-inline">O histórico de análises ainda está vazio.</div>
             {% endfor %}
         </div>
     </section>

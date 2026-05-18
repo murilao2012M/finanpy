@@ -38,13 +38,10 @@ MERCADO_PAGO_PUBLIC_KEY=SUA_PUBLIC_KEY_NOVA
 MERCADO_PAGO_ACCESS_TOKEN=SEU_ACCESS_TOKEN_NOVO
 MERCADO_PAGO_WEBHOOK_SECRET=SUA_SECRET_DO_WEBHOOK
 MERCADO_PAGO_BASE_URL=https://api.mercadopago.com
-OPENAI_API_KEY=SUA_CHAVE_OPENAI
-OPENAI_MODEL=gpt-5-mini
-OPENAI_TIMEOUT_SECONDS=60
 DJANGO_LOG_LEVEL=INFO
 ```
 
-O `DATABASE_URL` e o `DJANGO_SECRET_KEY` sao gerados pelo Render via `render.yaml`.
+O `DATABASE_URL` e o `DJANGO_SECRET_KEY` sao gerados pelo Render via `render.yaml`. A analise inteligente do FinanPy roda localmente, entao nao precisa de chave de IA externa para funcionar.
 
 ## 3.1. Criar superusuario sem Shell no plano gratuito
 

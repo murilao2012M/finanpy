@@ -142,6 +142,11 @@
                                     {% if lancamento.tipo == "RECEITA" %}+{% else %}-{% endif %} {{ lancamento.valor|brl }}
                                 </td>
                                 <td class="text-end">
+                                    {% if lancamento.status != "PAGO" %}
+                                        <button type="submit" form="pagarLancamento{{ lancamento.id }}" class="btn btn-table-action">Pagar</button>
+                                    {% endif %}
+                                    <button type="submit" form="duplicarLancamento{{ lancamento.id }}" class="btn btn-table-action">Duplicar</button>
+                                    <button type="submit" form="recorrenciaLancamento{{ lancamento.id }}" class="btn btn-table-action">Recorrente 6m</button>
                                     <a href="{% url 'editar_lancamento' lancamento.pk %}" class="btn btn-table-action">Editar</a>
                                     <a href="{% url 'excluir_lancamento' lancamento.pk %}" class="btn btn-table-action btn-table-danger">Excluir</a>
                                 </td>
@@ -155,6 +160,22 @@
                 </table>
             </div>
         </form>
+
+        {% for lancamento in lancamentos %}
+            <form id="pagarLancamento{{ lancamento.id }}" method="post" action="{% url 'marcar_lancamento_pago' lancamento.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            </form>
+            <form id="duplicarLancamento{{ lancamento.id }}" method="post" action="{% url 'duplicar_lancamento_proximo_mes' lancamento.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            </form>
+            <form id="recorrenciaLancamento{{ lancamento.id }}" method="post" action="{% url 'criar_recorrencia_lancamento' lancamento.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <input type="hidden" name="quantidade_meses" value="6">
+            </form>
+        {% endfor %}
     </div>
 </section>
 {% endblock %}

@@ -280,13 +280,17 @@ class CategoriaForm(forms.ModelForm, BootstrapFormMixin):
 
     class Meta:
         model = Categoria
-        fields = ["nome", "tipo", "descricao"]
+        fields = ["nome", "tipo", "limite_mensal", "descricao"]
         labels = {
             "nome": "Nome da categoria",
             "tipo": "Tipo",
+            "limite_mensal": "Limite mensal",
             "descricao": "Descrição",
         }
-        widgets = {"descricao": forms.Textarea(attrs={"rows": 3})}
+        widgets = {
+            "limite_mensal": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+            "descricao": forms.Textarea(attrs={"rows": 3}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

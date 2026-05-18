@@ -133,6 +133,40 @@
                         </section>
                     {% endif %}
 
+                    {% if meta.previsao_conclusao %}
+                        <section class="smart-goal-panel">
+                            <div class="smart-goal-header">
+                                <div>
+                                    <span class="eyebrow">Previsão De Conclusão</span>
+                                    <h4>{{ meta.previsao_conclusao.mensagem }}</h4>
+                                </div>
+                                <span class="status-pill {% if meta.previsao_conclusao.status_previsao == 'NO_PRAZO' or meta.previsao_conclusao.status_previsao == 'CONCLUIDA' %}status-paid{% elif meta.previsao_conclusao.status_previsao == 'SEM_RITMO' %}status-pending{% else %}status-overdue{% endif %}">
+                                    {{ meta.previsao_conclusao.status_previsao|title_pt }}
+                                </span>
+                            </div>
+                            <div class="smart-goal-grid">
+                                <article>
+                                    <span class="goal-label">Progresso</span>
+                                    <strong>{{ meta.previsao_conclusao.percentual }}%</strong>
+                                </article>
+                                <article>
+                                    <span class="goal-label">Valor Faltante</span>
+                                    <strong>{{ meta.previsao_conclusao.valor_faltante|brl }}</strong>
+                                </article>
+                                <article>
+                                    <span class="goal-label">Data Prevista</span>
+                                    <strong>
+                                        {% if meta.previsao_conclusao.data_prevista %}
+                                            {{ meta.previsao_conclusao.data_prevista|date:"d/m/Y" }}
+                                        {% else %}
+                                            Ajustar Ritmo
+                                        {% endif %}
+                                    </strong>
+                                </article>
+                            </div>
+                        </section>
+                    {% endif %}
+
                     <div class="goal-item-footer">
                         <span>{{ meta.progresso_percentual }}% concluído • Prioridade {{ meta.get_prioridade_display|title_pt }}</span>
                         <div class="d-flex gap-2 flex-wrap">

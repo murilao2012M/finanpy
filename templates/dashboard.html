@@ -24,6 +24,140 @@
     </form>
 </section>
 
+{% if acao_recomendada_hoje %}
+    <section class="card-modern card-body-modern recommended-action-card recommended-action-{{ acao_recomendada_hoje.tipo }} mb-4">
+        <div class="recommended-action-icon">
+            <i class="fa-solid {{ acao_recomendada_hoje.icone }}"></i>
+        </div>
+        <div class="recommended-action-content">
+            <span class="recommended-action-kicker">Ação Recomendada De Hoje</span>
+            <h2>{{ acao_recomendada_hoje.titulo }}</h2>
+            <p>{{ acao_recomendada_hoje.descricao }}</p>
+        </div>
+        <div class="recommended-action-side">
+            <span class="settings-pill recommended-priority recommended-priority-{{ acao_recomendada_hoje.prioridade }}">
+                Prioridade {{ acao_recomendada_hoje.prioridade|title_pt }}
+            </span>
+            <a href="{{ acao_recomendada_hoje.botao_url }}" class="btn btn-premium">
+                {{ acao_recomendada_hoje.botao_texto }}
+            </a>
+        </div>
+    </section>
+{% endif %}
+
+<div class="dashboard-layout mb-4">
+    <section class="card-modern card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Cadastro Rápido</h2>
+                <p class="panel-subtitle">Registre uma receita ou despesa sem sair do painel.</p>
+            </div>
+            <span class="panel-chip">Dashboard</span>
+        </div>
+
+        <form method="post" class="row g-3">
+            {% csrf_token %}
+            <input type="hidden" name="mes_retorno" value="{{ mes_filtro }}">
+            <div class="col-md-6">
+                <label for="rapido_tipo" class="field-label">Tipo</label>
+                <select name="tipo" id="rapido_tipo" class="form-select" required>
+                    {% for codigo, nome in tipos_lancamento_rapido %}
+                        <option value="{{ codigo }}">{{ nome|title_pt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label for="rapido_status" class="field-label">Status</label>
+                <select name="status" id="rapido_status" class="form-select" required>
+                    {% for codigo, nome in status_lancamento_rapido %}
+                        <option value="{{ codigo }}" {% if codigo == "PENDENTE" %}selected{% endif %}>{{ nome|title_pt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-8">
+                <label for="rapido_descricao" class="field-label">Descrição</label>
+                <input type="text" name="descricao" id="rapido_descricao" class="form-control" placeholder="Ex: Mercado, salário, internet..." required>
+            </div>
+            <div class="col-md-4">
+                <label for="rapido_valor" class="field-label">Valor</label>
+                <input type="number" name="valor" id="rapido_valor" class="form-control" min="0.01" step="0.01" placeholder="0,00" required>
+            </div>
+            <div class="col-md-7">
+                <label for="rapido_categoria" class="field-label">Categoria</label>
+                <select name="categoria" id="rapido_categoria" class="form-select" required>
+                    <option value="">Selecione uma categoria</option>
+                    {% for categoria in categorias_lancamento_rapido %}
+                        <option value="{{ categoria.id }}" data-tipo="{{ categoria.tipo }}">{{ categoria.get_tipo_display|title_pt }} · {{ categoria.nome|title_pt }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label for="rapido_data" class="field-label">Data</label>
+                <input type="date" name="data" id="rapido_data" value="{{ data_lancamento_rapido }}" class="form-control" required>
+            </div>
+            <div class="col-12">
+                <button type="submit" name="criar_lancamento_rapido" value="1" class="btn btn-premium w-100">
+                    <i class="fa-solid fa-bolt me-2"></i>
+                    Salvar Lançamento Rápido
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card-modern card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">{{ resumo_semanal.titulo }}</h2>
+                <p class="panel-subtitle">{{ resumo_semanal.mensagem }}</p>
+            </div>
+            <span class="panel-chip">{{ resumo_semanal.total_gasto|brl }}</span>
+        </div>
+
+        <div class="goal-list">
+            <article class="goal-item">
+                <div class="goal-item-top">
+                    <div>
+                        <h3>Comparativo Mensal</h3>
+                        <p>{{ comparativo_mes.mensagem }}</p>
+                    </div>
+                    <strong class="{% if comparativo_mes.despesas_variacao <= 0 %}text-success{% else %}text-warning{% endif %}">
+                        {{ comparativo_mes.despesas_variacao }}%
+                    </strong>
+                </div>
+            </article>
+            <article class="goal-item">
+                <div class="goal-item-top">
+                    <div>
+                        <h3>Sugestão Para Guardar</h3>
+                        <p>{{ sugestao_guardar.mensagem }}</p>
+                    </div>
+                    <strong class="text-success">{{ sugestao_guardar.valor_sugerido|brl }}</strong>
+                </div>
+            </article>
+            <article class="goal-item">
+                <div class="goal-item-top">
+                    <div>
+                        <h3>Parcelas Futuras</h3>
+                        <p>Compromisso parcelado dos próximos 6 meses.</p>
+                    </div>
+                    <strong>{{ parcelas_futuras.0.total_parcelado|default:0|brl }}</strong>
+                </div>
+            </article>
+            {% for alerta in resumo_semanal.alertas %}
+                <article class="goal-item">
+                    <div class="goal-item-top">
+                        <div>
+                            <h3>Alerta Da Semana</h3>
+                            <p>{{ alerta }}</p>
+                        </div>
+                        <i class="fa-solid fa-bell text-warning"></i>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+
 <div class="dashboard-grid dashboard-metrics mb-4">
     <article class="metric-card metric-card-primary card-modern">
         <div class="metric-top">
@@ -141,8 +275,8 @@
     <section class="card-modern card-body-modern ai-dashboard-card">
         <div class="panel-header ai-dashboard-header">
             <div>
-                <h2 class="panel-title">Assistente Financeiro Com IA</h2>
-                <p class="panel-subtitle">Leitura inteligente do seu mês com alertas, oportunidades e plano de ação.</p>
+                <h2 class="panel-title">Assistente Financeiro Inteligente</h2>
+                <p class="panel-subtitle">Leitura local do seu mês com alertas, oportunidades e plano de ação.</p>
             </div>
             <a href="{% url 'analise_ia' %}" class="btn btn-panel">
                 {% if ia_liberada %}Análise Financeira{% else %}Conhecer Premium{% endif %}
@@ -175,7 +309,7 @@
         {% else %}
             <div class="ai-upsell ai-dashboard-upsell">
                 <div>
-                    <strong>Premium Com IA Real</strong>
+                    <strong>Premium Com Inteligência Local</strong>
                     <p>Receba resumo executivo, alertas prioritários e plano de ação com base nos seus dados financeiros.</p>
                 </div>
                 <a href="{% url 'configuracoes' %}" class="btn btn-premium">Assinar Plano de 30 Dias</a>
@@ -192,6 +326,65 @@
         </div>
 
         <div class="goal-list">
+            {% if previsao_fechamento_mes %}
+                <article class="goal-item forecast-item forecast-{{ previsao_fechamento_mes.status|lower }}">
+                    <div class="goal-item-top">
+                        <div>
+                            <h3>Previsão de fechamento</h3>
+                            <p>{{ previsao_fechamento_mes.mensagem }}</p>
+                        </div>
+                        <div class="forecast-result">
+                            <strong class="{% if previsao_fechamento_mes.status == 'POSITIVO' %}text-success{% elif previsao_fechamento_mes.status == 'NEGATIVO' %}text-danger{% else %}text-warning{% endif %}">
+                                {{ previsao_fechamento_mes.saldo_previsto|brl }}
+                            </strong>
+                            <span>Risco {{ previsao_fechamento_mes.risco|title_pt }}</span>
+                        </div>
+                    </div>
+                </article>
+            {% endif %}
+            {% if proxima_conta_importante %}
+                <article class="goal-item next-bill-item next-bill-{{ proxima_conta_importante.status }}">
+                    <div class="goal-item-top">
+                        <div>
+                            <h3>Próxima conta importante</h3>
+                            <p>{{ proxima_conta_importante.descricao }} · {{ proxima_conta_importante.mensagem }}</p>
+                        </div>
+                        <div class="forecast-result">
+                            <strong class="{% if proxima_conta_importante.status == 'atrasada' %}text-danger{% elif proxima_conta_importante.status == 'vence_hoje' or proxima_conta_importante.status == 'vence_em_breve' %}text-warning{% else %}text-success{% endif %}">
+                                {{ proxima_conta_importante.valor|brl }}
+                            </strong>
+                            <span>{{ proxima_conta_importante.vencimento|date:"d/m/Y" }}</span>
+                        </div>
+                    </div>
+                </article>
+            {% endif %}
+            {% for alerta in alertas_limite_categoria %}
+                <article class="goal-item category-limit-item category-limit-{{ alerta.nivel|lower }}">
+                    <div class="goal-item-top">
+                        <div>
+                            <h3>Limite de {{ alerta.categoria }}</h3>
+                            <p>Você já usou {{ alerta.percentual }}% do limite mensal desta categoria.</p>
+                        </div>
+                        <div class="forecast-result">
+                            <strong class="{% if alerta.nivel == 'ESTOURO' %}text-danger{% else %}text-warning{% endif %}">
+                                {{ alerta.gasto|brl }}
+                            </strong>
+                            <span>Limite {{ alerta.limite|brl }}</span>
+                        </div>
+                    </div>
+                </article>
+            {% endfor %}
+            {% for gasto in gastos_pequenos_recorrentes %}
+                <article class="goal-item small-recurring-item">
+                    <div class="goal-item-top">
+                        <div>
+                            <h3>Gasto pequeno recorrente</h3>
+                            <p>{{ gasto.mensagem }} Foram {{ gasto.quantidade }} ocorrência(s) no mês.</p>
+                        </div>
+                        <strong class="text-warning">{{ gasto.total|brl }}</strong>
+                    </div>
+                </article>
+            {% endfor %}
             <article class="goal-item">
                 <div class="goal-item-top">
                     <div>
@@ -417,6 +610,25 @@
 {{ categorias_chart|json_script:"chart-categorias" }}
 {{ totais_categorias_chart|json_script:"chart-categorias-totais" }}
 <script>
+    const rapidoTipo = document.getElementById("rapido_tipo");
+    const rapidoCategoria = document.getElementById("rapido_categoria");
+
+    if (rapidoTipo && rapidoCategoria) {
+        const atualizarCategoriasRapidas = function () {
+            const tipoSelecionado = rapidoTipo.value;
+            Array.from(rapidoCategoria.options).forEach(function (option) {
+                const tipoCategoria = option.dataset.tipo;
+                option.hidden = Boolean(tipoCategoria && tipoCategoria !== tipoSelecionado);
+            });
+            const categoriaSelecionada = rapidoCategoria.selectedOptions[0];
+            if (categoriaSelecionada && categoriaSelecionada.hidden) {
+                rapidoCategoria.value = "";
+            }
+        };
+        rapidoTipo.addEventListener("change", atualizarCategoriasRapidas);
+        atualizarCategoriasRapidas();
+    }
+
     const labels = JSON.parse(document.getElementById("chart-labels").textContent);
     const receitas = JSON.parse(document.getElementById("chart-receitas").textContent);
     const despesas = JSON.parse(document.getElementById("chart-despesas").textContent);
@@ -424,8 +636,8 @@
     const categorias = JSON.parse(document.getElementById("chart-categorias").textContent);
     const categoriasTotais = JSON.parse(document.getElementById("chart-categorias-totais").textContent);
 
-    const gridColor = "rgba(148, 163, 184, 0.12)";
-    const textColor = "#cbd5e1";
+    const gridColor = "rgba(148, 163, 184, 0.18)";
+    const textColor = "#475569";
 
     const evolucaoCtx = document.getElementById("evolucaoChart");
     if (evolucaoCtx) {

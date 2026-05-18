@@ -2,239 +2,1199 @@
 {% load financeiro_extras %}
 
 {% block content %}
-<section class="hero-panel mb-4">
-    <div>
-        <span class="eyebrow">Conta E Plano</span>
-        <h1 class="page-title">Configurações</h1>
-        <p class="page-subtitle">Acompanhe seu plano, ajuste preferências básicas e mantenha sua conta segura.</p>
-    </div>
-    {% if plano_usuario.ia_habilitada %}
-        <a href="{% url 'analise_ia' %}" class="btn btn-premium">
-            <i class="fa-solid fa-robot me-2"></i>
-            Análise Financeira
-        </a>
-    {% else %}
-        <form method="post" action="{% url 'checkout_premium' %}">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-premium">
-                <i class="fa-solid fa-crown me-2"></i>
-                Assinar Plano de 30 Dias
-            </button>
-        </form>
-    {% endif %}
-</section>
+<style>
+    .settings-shell {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
 
-<div class="dashboard-grid dashboard-metrics mb-4">
-    <article class="metric-card card-modern">
-        <p class="metric-label">Plano Atual</p>
-        <h2 class="metric-value">{{ plano_usuario.get_nome_plano_display }}</h2>
-        <span class="metric-trend {% if plano_usuario.eh_premium %}text-success{% else %}text-warning{% endif %}">
-            <i class="fa-solid fa-crown"></i>
-            {% if plano_usuario.eh_premium %}Premium Ativo{% else %}Freemium Ativo{% endif %}
-        </span>
-    </article>
-    <article class="metric-card card-modern">
-        <p class="metric-label">Pedido De Assinatura</p>
-        <h2 class="metric-value">{{ plano_usuario.mercado_pago_status|default:"Pending"|title_pt }}</h2>
-        <span class="metric-trend text-info">
-            <i class="fa-solid fa-receipt"></i>
-            Status Do Mercado Pago
-        </span>
-    </article>
-    <article class="metric-card card-modern">
-        <p class="metric-label">Pagamento Recebido</p>
-        <h2 class="metric-value">{% if plano_usuario.eh_premium %}Ativo{% else %}Pendente{% endif %}</h2>
-        <span class="metric-trend {% if plano_usuario.eh_premium %}text-success{% else %}text-secondary{% endif %}">
-            <i class="fa-solid fa-circle-check"></i>
-            Liberação Automática Pelo Backend
-        </span>
-    </article>
-    <article class="metric-card card-modern">
-        <p class="metric-label">Valor Do Plano</p>
-        <h2 class="metric-value">{{ plano_usuario.valor_mensal|brl }}</h2>
-        <span class="metric-trend text-info">
-            <i class="fa-solid fa-wallet"></i>
-            30 Dias De Acesso
-        </span>
-    </article>
-</div>
+    .settings-hero {
+        position: relative;
+        overflow: hidden;
+        border-radius: 28px;
+        padding: 2rem;
+        background: radial-gradient(circle at top right, rgba(99, 102, 241, .28), transparent 32%),
+                    linear-gradient(135deg, rgba(15, 23, 42, .98), rgba(30, 41, 59, .96));
+        color: #fff;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, .22);
+    }
 
-<section class="card-modern card-body-modern mb-4">
-    <div class="panel-header mb-4">
-        <div>
-            <h2 class="panel-title">Plano Do FinanPy</h2>
-            <p class="panel-subtitle">O Premium libera IA, Simulador, Modo Anti-Descontrole, Modo Casal/Família e limites ampliados.</p>
-        </div>
-    </div>
+    .settings-hero::after {
+        content: "";
+        position: absolute;
+        inset: auto -120px -180px auto;
+        width: 360px;
+        height: 360px;
+        border-radius: 999px;
+        background: rgba(34, 197, 94, .18);
+        filter: blur(8px);
+    }
 
-    <div class="goal-values mb-4">
-        <div>
-            <span class="goal-label">Cartões</span>
-            <strong>{{ plano_usuario.limite_cartoes }}</strong>
-        </div>
-        <div>
-            <span class="goal-label">Metas</span>
-            <strong>{{ plano_usuario.limite_metas }}</strong>
-        </div>
-        <div>
-            <span class="goal-label">Investimentos</span>
-            <strong>{{ plano_usuario.limite_investimentos }}</strong>
-        </div>
-        <div>
-            <span class="goal-label">IA Financeira</span>
-            <strong>{% if plano_usuario.ia_habilitada %}Liberada{% else %}Bloqueada{% endif %}</strong>
-        </div>
-    </div>
+    .settings-hero-content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1.25rem;
+        flex-wrap: wrap;
+    }
 
-    <div class="d-flex gap-2 flex-wrap">
-        {% if plano_usuario.eh_premium %}
-            <a href="{% url 'analise_ia' %}" class="btn btn-premium">Análise Financeira</a>
-            <form method="post" action="{% url 'cancelar_assinatura_premium' %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-premium-danger">Cancelar Assinatura</button>
-            </form>
-        {% else %}
-            <form method="post" action="{% url 'checkout_premium' %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-premium">Assinar Plano de 30 Dias</button>
-            </form>
-        {% endif %}
-    </div>
-</section>
+    .settings-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .4rem .75rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .12);
+        color: rgba(255, 255, 255, .84);
+        font-size: .78rem;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        margin-bottom: .85rem;
+    }
 
-<section class="card-modern card-body-modern mb-4">
-    <div class="panel-header mb-4">
-        <div>
-            <h2 class="panel-title">Histórico Da Assinatura</h2>
-            <p class="panel-subtitle">Aqui ficam os eventos simples do pedido, pagamento e liberação do plano.</p>
-        </div>
-    </div>
+    .settings-title {
+        font-size: clamp(2rem, 4vw, 3.3rem);
+        font-weight: 900;
+        letter-spacing: -.05em;
+        margin: 0;
+    }
 
-    <div class="goal-list">
-        {% for evento in eventos_assinatura %}
-            <article class="goal-item">
-                <div class="goal-item-top">
-                    <div>
-                        <h3>{{ evento.get_tipo_display|title_pt }}</h3>
-                        <p>{{ evento.mensagem|default:"Evento registrado pelo backend do FinanPy." }}</p>
-                    </div>
-                    <span class="status-pill {% if evento.tipo == 'ERRO' %}status-overdue{% elif evento.tipo == 'PREMIUM_ATIVADO' %}status-paid{% else %}status-pending{% endif %}">
-                        {{ evento.criado_em|date:"d/m/Y H:i" }}
-                    </span>
-                </div>
-                <div class="goal-item-footer">
-                    <span>{{ evento.get_origem_display|title_pt }}</span>
-                    <span>{{ evento.status_gateway|default:"Pending"|title_pt }}</span>
-                </div>
-            </article>
-        {% empty %}
-            <div class="empty-state-inline">Nenhum pedido de assinatura foi registrado até agora.</div>
-        {% endfor %}
-    </div>
-</section>
+    .settings-subtitle {
+        max-width: 720px;
+        color: rgba(255, 255, 255, .74);
+        font-size: 1rem;
+        margin: .85rem 0 0;
+    }
 
-<div class="dashboard-layout">
-    <section class="card-modern card-body-modern">
-        <div class="panel-header mb-4">
+    .settings-actions {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        flex-wrap: wrap;
+    }
+
+    .smart-grid {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-5 { grid-column: span 5; }
+    .span-6 { grid-column: span 6; }
+    .span-7 { grid-column: span 7; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+
+    .smart-card {
+        border: 1px solid rgba(148, 163, 184, .22);
+        border-radius: 24px;
+        background: rgba(255, 255, 255, .92);
+        box-shadow: 0 18px 48px rgba(15, 23, 42, .08);
+        padding: 1.25rem;
+        height: 100%;
+    }
+
+    .smart-card-soft {
+        background: linear-gradient(180deg, rgba(255, 255, 255, .98), rgba(248, 250, 252, .94));
+    }
+
+    .smart-card-dark {
+        background: linear-gradient(135deg, #0f172a, #1e293b);
+        color: #fff;
+    }
+
+    .smart-card-dark .smart-muted,
+    .smart-card-dark .smart-label,
+    .smart-card-dark .smart-helper {
+        color: rgba(255, 255, 255, .68);
+    }
+
+    .smart-card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .smart-label {
+        margin: 0;
+        font-size: .76rem;
+        font-weight: 900;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: #64748b;
+    }
+
+    .smart-title {
+        margin: .25rem 0 0;
+        color: #0f172a;
+        font-size: 1.15rem;
+        font-weight: 900;
+        letter-spacing: -.03em;
+    }
+
+    .smart-card-dark .smart-title {
+        color: #fff;
+    }
+
+    .smart-muted,
+    .smart-helper {
+        color: #64748b;
+        margin: .3rem 0 0;
+        font-size: .92rem;
+        line-height: 1.5;
+    }
+
+    .smart-kpi {
+        font-size: clamp(1.75rem, 3vw, 2.4rem);
+        font-weight: 950;
+        color: #0f172a;
+        letter-spacing: -.05em;
+        margin: .2rem 0;
+    }
+
+    .smart-card-dark .smart-kpi {
+        color: #fff;
+    }
+
+    .settings-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        border-radius: 999px;
+        padding: .42rem .7rem;
+        font-size: .78rem;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .pill-success { background: rgba(34, 197, 94, .12); color: #15803d; }
+    .pill-warning { background: rgba(245, 158, 11, .14); color: #b45309; }
+    .pill-info { background: rgba(59, 130, 246, .12); color: #1d4ed8; }
+    .pill-danger { background: rgba(239, 68, 68, .12); color: #b91c1c; }
+    .pill-dark { background: rgba(15, 23, 42, .08); color: #0f172a; }
+
+    .smart-card-dark .settings-pill {
+        border: 1px solid rgba(255, 255, 255, .12);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .04);
+    }
+
+    .smart-card-dark .pill-success {
+        background: rgba(34, 197, 94, .18);
+        color: #86efac;
+    }
+
+    .smart-card-dark .pill-warning {
+        background: rgba(245, 158, 11, .2);
+        color: #fde68a;
+    }
+
+    .smart-card-dark .pill-info {
+        background: rgba(59, 130, 246, .18);
+        color: #bfdbfe;
+    }
+
+    .smart-card-dark .pill-danger {
+        background: rgba(239, 68, 68, .18);
+        color: #fecaca;
+    }
+
+    .smart-card-dark .pill-dark {
+        background: rgba(255, 255, 255, .12);
+        color: #f8fafc;
+    }
+
+    .smart-card-dark .settings-pill i {
+        color: inherit;
+    }
+
+    .score-box {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .score-ring {
+        width: 92px;
+        height: 92px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: conic-gradient(#22c55e calc(var(--score, 72) * 1%), rgba(226, 232, 240, .95) 0);
+        position: relative;
+        flex: 0 0 auto;
+    }
+
+    .score-ring::after {
+        content: "";
+        position: absolute;
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: #fff;
+    }
+
+    .score-ring strong {
+        position: relative;
+        z-index: 1;
+        font-size: 1.25rem;
+        color: #0f172a;
+    }
+
+    .usage-bar {
+        width: 100%;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(226, 232, 240, .95);
+        overflow: hidden;
+        margin-top: .75rem;
+    }
+
+    .usage-bar span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #6366f1, #22c55e);
+        width: var(--usage, 0%);
+    }
+
+    .settings-tabs {
+        display: flex;
+        gap: .65rem;
+        flex-wrap: wrap;
+        padding: .5rem;
+        border-radius: 22px;
+        background: rgba(241, 245, 249, .9);
+        border: 1px solid rgba(148, 163, 184, .2);
+    }
+
+    .settings-tabs .nav-link {
+        border: 0;
+        border-radius: 16px;
+        color: #475569;
+        font-weight: 850;
+        padding: .72rem 1rem;
+    }
+
+    .settings-tabs .nav-link.active {
+        color: #0f172a;
+        background: #fff;
+        box-shadow: 0 12px 26px rgba(15, 23, 42, .08);
+    }
+
+    .settings-list {
+        display: flex;
+        flex-direction: column;
+        gap: .8rem;
+    }
+
+    .settings-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: .95rem;
+        border-radius: 18px;
+        background: rgba(248, 250, 252, .86);
+        border: 1px solid rgba(226, 232, 240, .9);
+    }
+
+    .settings-row h3 {
+        margin: 0;
+        font-size: .98rem;
+        color: #0f172a;
+        font-weight: 900;
+    }
+
+    .settings-row p {
+        margin: .22rem 0 0;
+        color: #64748b;
+        font-size: .86rem;
+        line-height: 1.4;
+    }
+
+    .smart-alert {
+        border-radius: 18px;
+        padding: 1rem;
+        display: flex;
+        align-items: flex-start;
+        gap: .85rem;
+        border: 1px solid transparent;
+    }
+
+    .smart-alert i {
+        margin-top: .1rem;
+    }
+
+    .smart-alert strong {
+        display: block;
+        color: #0f172a;
+        font-weight: 900;
+        margin-bottom: .2rem;
+    }
+
+    .smart-alert p {
+        color: #475569;
+        margin: 0;
+        font-size: .9rem;
+        line-height: 1.45;
+    }
+
+    .alert-success-soft { background: rgba(34, 197, 94, .1); border-color: rgba(34, 197, 94, .18); }
+    .alert-warning-soft { background: rgba(245, 158, 11, .12); border-color: rgba(245, 158, 11, .2); }
+    .alert-info-soft { background: rgba(59, 130, 246, .1); border-color: rgba(59, 130, 246, .18); }
+    .alert-danger-soft { background: rgba(239, 68, 68, .1); border-color: rgba(239, 68, 68, .18); }
+
+    .timeline {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: .9rem;
+    }
+
+    .timeline-item {
+        display: grid;
+        grid-template-columns: 38px 1fr;
+        gap: .75rem;
+    }
+
+    .timeline-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: rgba(99, 102, 241, .12);
+        color: #4f46e5;
+    }
+
+    .timeline-content {
+        padding: .85rem;
+        border-radius: 16px;
+        background: rgba(248, 250, 252, .88);
+        border: 1px solid rgba(226, 232, 240, .9);
+    }
+
+    .timeline-content h3 {
+        margin: 0;
+        color: #0f172a;
+        font-size: .95rem;
+        font-weight: 900;
+    }
+
+    .timeline-content p {
+        margin: .25rem 0 0;
+        color: #64748b;
+        font-size: .86rem;
+    }
+
+    .badge-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .75rem;
+    }
+
+    .achievement {
+        padding: .95rem;
+        border-radius: 18px;
+        background: rgba(248, 250, 252, .92);
+        border: 1px solid rgba(226, 232, 240, .9);
+    }
+
+    .achievement i {
+        width: 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+        border-radius: 14px;
+        background: rgba(245, 158, 11, .16);
+        color: #b45309;
+        margin-bottom: .7rem;
+    }
+
+    .achievement strong {
+        display: block;
+        color: #0f172a;
+        font-size: .95rem;
+        font-weight: 900;
+    }
+
+    .achievement span {
+        color: #64748b;
+        font-size: .82rem;
+    }
+
+    .smart-form-card .form-control,
+    .smart-form-card .form-select {
+        border-radius: 14px;
+        border-color: rgba(203, 213, 225, .95);
+        min-height: 46px;
+    }
+
+    .field-label {
+        color: #334155;
+        font-weight: 850;
+        font-size: .86rem;
+        margin-bottom: .4rem;
+    }
+
+    .danger-zone {
+        border-color: rgba(239, 68, 68, .2);
+        background: linear-gradient(180deg, rgba(255, 255, 255, .98), rgba(254, 242, 242, .92));
+    }
+
+    @media (max-width: 992px) {
+        .span-3,
+        .span-4,
+        .span-5,
+        .span-6,
+        .span-7,
+        .span-8 {
+            grid-column: span 12;
+        }
+
+        .badge-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<section class="settings-shell">
+    <section class="settings-hero">
+        <div class="settings-hero-content">
             <div>
-                <h2 class="panel-title">Perfil Da Conta</h2>
-                <p class="panel-subtitle">Atualize nome, e-mail e nome de usuário.</p>
+                <span class="settings-eyebrow">
+                    <i class="fa-solid fa-sliders"></i>
+                    Conta Inteligente
+                </span>
+                <h1 class="settings-title">Configurações</h1>
+                <p class="settings-subtitle">
+                    Gerencie sua conta, plano, segurança e preferências financeiras em um painel mais inteligente, com recomendações, diagnóstico e atalhos úteis.
+                </p>
+            </div>
+
+            <div class="settings-actions">
+                {% if plano_usuario.ia_habilitada %}
+                    <a href="{% url 'analise_ia' %}" class="btn btn-premium">
+                        <i class="fa-solid fa-robot me-2"></i>
+                        Abrir Inteligência Financeira
+                    </a>
+                {% else %}
+                    <form method="post" action="{% url 'checkout_premium' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-premium">
+                            <i class="fa-solid fa-crown me-2"></i>
+                            Assinar Plano de 30 Dias
+                        </button>
+                    </form>
+                {% endif %}
             </div>
         </div>
-        <form method="post">
-            {% csrf_token %}
-            <div class="row">
-                {% for field in perfil_form %}
-                    <div class="col-md-6 mb-3">
-                        <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
-                        {{ field }}
-                        {% for error in field.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                {% endfor %}
-            </div>
-            <button type="submit" name="salvar_perfil" class="btn btn-premium">Salvar Perfil</button>
-        </form>
     </section>
 
-    <section class="card-modern card-body-modern">
-        <div class="panel-header mb-4">
-            <div>
-                <h2 class="panel-title">Preferências Do Painel</h2>
-                <p class="panel-subtitle">Controle moeda, alertas e privacidade do saldo.</p>
+    <div class="smart-grid">
+        <article class="smart-card smart-card-soft span-4">
+            <div class="smart-card-header">
+                <div>
+                    <p class="smart-label">Saúde Da Conta</p>
+                    <h2 class="smart-title">Status geral</h2>
+                </div>
+                {% if plano_usuario.eh_premium %}
+                    <span class="settings-pill pill-success"><i class="fa-solid fa-shield-halved"></i> Otimizada</span>
+                {% else %}
+                    <span class="settings-pill pill-warning"><i class="fa-solid fa-triangle-exclamation"></i> Em evolução</span>
+                {% endif %}
             </div>
-        </div>
-        <form method="post">
-            {% csrf_token %}
-            <div class="row">
-                {% for field in preferencias_form %}
-                    <div class="{% if field.field.widget.input_type == 'checkbox' %}col-12{% else %}col-md-6{% endif %} mb-3">
-                        <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
-                        {% if field.field.widget.input_type == 'checkbox' %}
-                            <div class="form-check form-switch settings-switch">{{ field }}</div>
+
+            <div class="score-box">
+                <div class="score-ring" style="--score: {{ conta_score|default:72 }};">
+                    <strong>{{ conta_score|default:72 }}%</strong>
+                </div>
+                <div>
+                    <p class="smart-helper">
+                        {% if plano_usuario.eh_premium %}
+                            Sua conta está com recursos avançados liberados. Mantenha senha, alertas e privacidade atualizados.
                         {% else %}
-                            {{ field }}
+                            Sua conta está funcional, mas ainda pode ganhar inteligência financeira, limites ampliados e alertas inteligentes.
                         {% endif %}
-                        {% for error in field.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                {% endfor %}
-            </div>
-            <button type="submit" name="salvar_preferencias" class="btn btn-premium">Salvar Preferências</button>
-        </form>
-    </section>
-</div>
-
-<div class="dashboard-layout mt-4">
-    <section class="card-modern card-body-modern">
-        <div class="panel-header mb-4">
-            <div>
-                <h2 class="panel-title">Segurança Da Conta</h2>
-                <p class="panel-subtitle">Altere sua senha periodicamente para manter a conta protegida.</p>
-            </div>
-        </div>
-        <form method="post">
-            {% csrf_token %}
-            <div class="row">
-                {% for field in senha_form %}
-                    <div class="col-md-4 mb-3">
-                        <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.help_text %}
-                            <div class="form-text register-help-text">{{ field.help_text|safe }}</div>
-                        {% endif %}
-                        {% for error in field.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                {% endfor %}
-            </div>
-            <button type="submit" name="alterar_senha" class="btn btn-premium-danger">Alterar Senha</button>
-        </form>
-    </section>
-
-    <section class="card-modern card-body-modern danger-zone">
-        <div class="panel-header mb-4">
-            <div>
-                <h2 class="panel-title">Excluir Conta</h2>
-                <p class="panel-subtitle">Esta ação remove definitivamente seus dados, transações, metas e histórico.</p>
-            </div>
-        </div>
-        <form method="post" action="{% url 'excluir_conta_usuario' %}">
-            {% csrf_token %}
-            {% for field in excluir_conta_form %}
-                <div class="mb-3">
-                    <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
-                    {{ field }}
-                    {% for error in field.errors %}
-                        <div class="text-danger small">{{ error }}</div>
-                    {% endfor %}
+                    </p>
                 </div>
-            {% endfor %}
-            <button type="submit" class="btn btn-premium-danger w-100">Excluir Minha Conta</button>
-        </form>
-    </section>
-</div>
+            </div>
+        </article>
+
+        <article class="smart-card smart-card-dark span-4">
+            <div class="smart-card-header">
+                <div>
+                    <p class="smart-label">Plano Atual</p>
+                    <h2 class="smart-title">{{ plano_usuario.get_nome_plano_display }}</h2>
+                </div>
+                {% if plano_usuario.eh_premium %}
+                    <span class="settings-pill pill-success"><i class="fa-solid fa-crown"></i> Premium</span>
+                {% else %}
+                    <span class="settings-pill pill-warning"><i class="fa-solid fa-user"></i> Freemium</span>
+                {% endif %}
+            </div>
+            <div class="smart-kpi">{{ plano_usuario.valor_mensal|brl }}</div>
+            <p class="smart-helper">
+                30 dias de acesso. Status do pedido: {{ plano_usuario.mercado_pago_status|default:"Pending"|title_pt }}.
+            </p>
+        </article>
+
+        <article class="smart-card smart-card-soft span-4">
+            <div class="smart-card-header">
+                <div>
+                    <p class="smart-label">Recomendação</p>
+                    <h2 class="smart-title">Próxima melhor ação</h2>
+                </div>
+                <span class="settings-pill pill-info"><i class="fa-solid fa-lightbulb"></i> Smart</span>
+            </div>
+
+            {% if plano_usuario.ia_habilitada %}
+                <div class="smart-alert alert-success-soft">
+                    <i class="fa-solid fa-robot text-success"></i>
+                    <div>
+                        <strong>Use a inteligência local para revisar o mês atual.</strong>
+                        <p>Abra a análise financeira e veja onde há risco de excesso, economia possível e oportunidades de ajuste.</p>
+                    </div>
+                </div>
+            {% else %}
+                <div class="smart-alert alert-warning-soft">
+                    <i class="fa-solid fa-crown text-warning"></i>
+                    <div>
+                        <strong>Libere a inteligência financeira.</strong>
+                        <p>O Premium libera análise inteligente, simulador, modo anti-descontrole, modo casal/família e limites maiores.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </article>
+    </div>
+
+    <ul class="nav settings-tabs" id="settingsTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="visao-tab" data-bs-toggle="tab" data-bs-target="#visao" type="button" role="tab">
+                <i class="fa-solid fa-chart-line me-2"></i>Visão Geral
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="plano-tab" data-bs-toggle="tab" data-bs-target="#plano" type="button" role="tab">
+                <i class="fa-solid fa-crown me-2"></i>Plano
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="ia-tab" data-bs-toggle="tab" data-bs-target="#ia" type="button" role="tab">
+                <i class="fa-solid fa-robot me-2"></i>Inteligência
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="conta-tab" data-bs-toggle="tab" data-bs-target="#conta" type="button" role="tab">
+                <i class="fa-solid fa-user-gear me-2"></i>Conta
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="seguranca-tab" data-bs-toggle="tab" data-bs-target="#seguranca" type="button" role="tab">
+                <i class="fa-solid fa-lock me-2"></i>Segurança
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="privacidade-tab" data-bs-toggle="tab" data-bs-target="#privacidade" type="button" role="tab">
+                <i class="fa-solid fa-user-shield me-2"></i>Privacidade
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="settingsTabContent">
+        <div class="tab-pane fade show active" id="visao" role="tabpanel" aria-labelledby="visao-tab">
+            <div class="smart-grid">
+                <section class="smart-card smart-card-soft span-8">
+                    <div class="smart-card-header">
+                        <div>
+                            <p class="smart-label">Uso Da Conta</p>
+                            <h2 class="smart-title">Seu progresso no FinanPy</h2>
+                            <p class="smart-muted">Indicadores simples para o usuário perceber valor e evolução dentro do sistema.</p>
+                        </div>
+                    </div>
+
+                    <div class="smart-grid">
+                        <div class="settings-row span-6">
+                            <div>
+                                <h3>Transações cadastradas</h3>
+                                <p>Total de movimentações registradas na conta.</p>
+                            </div>
+                            <span class="settings-pill pill-dark">{{ transacoes_count|default:0 }}</span>
+                        </div>
+
+                        <div class="settings-row span-6">
+                            <div>
+                                <h3>Metas concluídas</h3>
+                                <p>Objetivos financeiros finalizados pelo usuário.</p>
+                            </div>
+                            <span class="settings-pill pill-success">{{ metas_concluidas|default:0 }}</span>
+                        </div>
+
+                        <div class="settings-row span-6">
+                            <div>
+                                <h3>Economia estimada no mês</h3>
+                                <p>Valor aproximado salvo com controle e planejamento.</p>
+                            </div>
+                            <span class="settings-pill pill-info">{{ economia_mes|default:0|brl }}</span>
+                        </div>
+
+                        <div class="settings-row span-6">
+                            <div>
+                                <h3>Dias usando o FinanPy</h3>
+                                <p>Tempo aproximado desde a criação da conta.</p>
+                            </div>
+                            <span class="settings-pill pill-dark">{{ dias_usando|default:0 }} dias</span>
+                        </div>
+                    </div>
+                </section>
+
+                <aside class="smart-card smart-card-soft span-4">
+                    <div class="smart-card-header">
+                        <div>
+                            <p class="smart-label">Perfil Financeiro</p>
+                            <h2 class="smart-title">{{ perfil_financeiro|default:"Em análise" }}</h2>
+                        </div>
+                        <span class="settings-pill pill-info"><i class="fa-solid fa-brain"></i> Auto</span>
+                    </div>
+                    <p class="smart-muted">
+                        O sistema pode classificar o comportamento com base em gastos recorrentes, metas, atraso de contas e evolução mensal.
+                    </p>
+                    <div class="usage-bar" style="--usage: {{ perfil_confianca_percentual|default:48 }}%;">
+                        <span></span>
+                    </div>
+                    <p class="smart-helper">Confiança da leitura: {{ perfil_confianca_percentual|default:48 }}%</p>
+                </aside>
+
+                <section class="smart-card smart-card-soft span-12">
+                    <div class="smart-card-header">
+                        <div>
+                            <p class="smart-label">Insights Automáticos</p>
+                            <h2 class="smart-title">Alertas inteligentes</h2>
+                        </div>
+                    </div>
+
+                    <div class="smart-grid">
+                        <div class="smart-alert alert-info-soft span-4">
+                            <i class="fa-solid fa-bell text-primary"></i>
+                            <div>
+                                <strong>Resumo semanal</strong>
+                                <p>Ative alertas para receber um panorama do mês, contas próximas e metas em risco.</p>
+                            </div>
+                        </div>
+
+                        <div class="smart-alert alert-warning-soft span-4">
+                            <i class="fa-solid fa-chart-pie text-warning"></i>
+                            <div>
+                                <strong>Risco de descontrole: {{ risco_descontrole|default:"Médio" }}</strong>
+                                <p>Use esse indicador para sugerir cortes, limites por categoria e revisão de gastos pequenos.</p>
+                            </div>
+                        </div>
+
+                        <div class="smart-alert alert-success-soft span-4">
+                            <i class="fa-solid fa-arrow-trend-down text-success"></i>
+                            <div>
+                                <strong>Variação de gastos</strong>
+                                <p>Comparação mensal atual: {{ gastos_variacao_percentual|default:"0%" }}.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="smart-card smart-card-soft span-12">
+                    <div class="smart-card-header">
+                        <div>
+                            <p class="smart-label">Conquistas</p>
+                            <h2 class="smart-title">Gamificação financeira</h2>
+                            <p class="smart-muted">Use conquistas para aumentar retenção e fazer o usuário voltar ao sistema.</p>
+                        </div>
+                    </div>
+
+                    <div class="badge-grid">
+                        <div class="achievement">
+                            <i class="fa-solid fa-trophy"></i>
+                            <strong>Primeira meta criada</strong>
+                            <span>{% if metas_count|default:0 %}Conquista em andamento{% else %}Cadastre uma meta para desbloquear{% endif %}</span>
+                        </div>
+                        <div class="achievement">
+                            <i class="fa-solid fa-fire"></i>
+                            <strong>Controle por 7 dias</strong>
+                            <span>{{ dias_controle|default:0 }} dias registrados</span>
+                        </div>
+                        <div class="achievement">
+                            <i class="fa-solid fa-piggy-bank"></i>
+                            <strong>Economia do mês</strong>
+                            <span>{{ economia_mes|default:0|brl }} acumulados</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="plano" role="tabpanel" aria-labelledby="plano-tab">
+            <div class="smart-grid">
+                <section class="smart-card smart-card-soft span-7">
+                    <div class="smart-card-header">
+                        <div>
+                            <p class="smart-label">Plano Do FinanPy</p>
+                            <h2 class="smart-title">Recursos liberados</h2>
+                            <p class="smart-muted">O Premium libera Inteligência Financeira, Simulador, Modo Anti-Descontrole, Modo Casal/Família e limites ampliados.</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-list">
+                        <div class="settings-row">
+                            <div>
+                                <h3>Cartões</h3>
+                                <p>Quantidade máxima de cartões que o usuário pode cadastrar.</p>
+                            </div>
+                            <span class="settings-pill pill-dark">{{ plano_usuario.limite_cartoes }}</span>
+                        </div>
+
+                        <div class="settings-row">
+                            <div>
+                                <h3>Metas</h3>
+                                <p>Limite de objetivos financeiros cadastrados.</p>
+                            </div>
+                            <span class="settings-pill pill-dark">{{ plano_usuario.limite_metas }}</span>
+                        </div>
+
+                        <div class="settings-row">
+                            <div>
+                                <h3>Investimentos</h3>
+                                <p>Limite de investimentos acompanhados pelo usuário.</p>
+                            </div>
+                            <span class="settings-pill pill-dark">{{ plano_usuario.limite_investimentos }}</span>
+                        </div>
+
+                        <div class="settings-row">
+                            <div>
+                                <h3>Inteligência Financeira</h3>
+                                <p>Acesso à análise automática, diagnóstico e recomendações.</p>
+                            </div>
+                            {% if plano_usuario.ia_habilitada %}
+                                <span class="settings-pill pill-success">Liberada</span>
+                            {% else %}
+                                <span class="settings-pill pill-warning">Bloqueada</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap mt-4">
+                        {% if plano_usuario.eh_premium %}
+                            <a href="{% url 'analise_ia' %}" class="btn btn-premium">Análise Financeira</a>
+                            <form method="post" action="{% url 'cancelar_assinatura_premium' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-premium-danger">Cancelar Assinatura</button>
+                            </form>
+                        {% else %}
+                            <form method="post" action="{% url 'checkout_premium' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-premium">Assinar Plano de 30 Dias</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </section>
+
+                <aside class="smart-card smart-card-soft span-5">
+                    <div class="smart-card-header">
+                        <div>
+                            <p class="smart-label">Consumo Do Plano</p>
+                            <h2 class="smart-title">Limites e uso</h2>
+                        </div>
+                    </div>
+
+                    <div class="settings-list">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <strong>Cartões usados</strong>
+                                <span>{{ cartoes_usados|default:0 }}/{{ plano_usuario.limite_cartoes }}</span>
+                            </div>
+                            <div class="usage-bar" style="--usage: {{ cartoes_usados_percentual|default:0 }}%;"><span></span></div>
+                        </div>
+
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <strong>Metas usadas</strong>
+                                <span>{{ metas_usadas|default:0 }}/{{ plano_usuario.limite_metas }}</span>
+                            </div>
+                            <div class="usage-bar" style="--usage: {{ metas_usadas_percentual|default:0 }}%;"><span></span></div>
+                        </div>
+
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <strong>Investimentos usados</strong>
+                                <span>{{ investimentos_usados|default:0 }}/{{ plano_usuario.limite_investimentos }}</span>
+                            </div>
+                            <div class="usage-bar" style="--usage: {{ investimentos_usados_percentual|default:0 }}%;"><span></span></div>
+                        </div>
+                    </div>
+                </aside>
+
+                <section class="smart-card smart-card-soft span-12">
+                    <div class="smart-card-header">
+                        <div>
+                            <p class="smart-label">Histórico Da Assinatura</p>
+                            <h2 class="smart-title">Linha do tempo do plano</h2>
+                            <p class="smart-muted">Eventos simples do pedido, pagamento e liberação do plano.</p>
+                        </div>
+                    </div>
+
+                    <div class="timeline">
+                        {% for evento in eventos_assinatura %}
+                            <article class="timeline-item">
+                                <div class="timeline-icon">
+                                    {% if evento.tipo == 'ERRO' %}
+                                        <i class="fa-solid fa-triangle-exclamation"></i>
+                                    {% elif evento.tipo == 'PREMIUM_ATIVADO' %}
+                                        <i class="fa-solid fa-circle-check"></i>
+                                    {% else %}
+                                        <i class="fa-solid fa-receipt"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="timeline-content">
+                                    <div class="d-flex justify-content-between gap-2 flex-wrap">
+                                        <h3>{{ evento.get_tipo_display|title_pt }}</h3>
+                                        <span class="settings-pill {% if evento.tipo == 'ERRO' %}pill-danger{% elif evento.tipo == 'PREMIUM_ATIVADO' %}pill-success{% else %}pill-warning{% endif %}">
+                                            {{ evento.criado_em|date:"d/m/Y H:i" }}
+                                        </span>
+                                    </div>
+                                    <p>{{ evento.mensagem|default:"Evento registrado pelo backend do FinanPy." }}</p>
+                                    <p>{{ evento.get_origem_display|title_pt }} · {{ evento.status_gateway|default:"Pending"|title_pt }}</p>
+                                </div>
+                            </article>
+                        {% empty %}
+                            <div class="smart-alert alert-info-soft">
+                                <i class="fa-solid fa-circle-info text-primary"></i>
+                                <div>
+                                    <strong>Nenhum evento registrado.</strong>
+                                    <p>Quando houver pedido, pagamento ou ativação, os eventos aparecerão aqui.</p>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="ia" role="tabpanel" aria-labelledby="ia-tab">
+            <div class="smart-grid">
+                <section class="smart-card smart-card-dark span-5">
+                    <div class="smart-card-header">
+                        <div>
+                            <p class="smart-label">Inteligência Financeira</p>
+                            <h2 class="smart-title">Diagnóstico inteligente</h2>
+                        </div>
+                        {% if plano_usuario.ia_habilitada %}
+                            <span class="settings-pill pill-success">Ativa</span>
+                        {% else %}
+                            <span class="settings-pill pill-warning">Bloqueada</span>
+                        {% endif %}
+                    </div>
+                    <div class="smart-kpi">{{ tendencia_financeira|default:"Estável" }}</div>
+                    <p class="smart-helper">
+                        Última análise: {% if ultima_analise_data %}{{ ultima_analise_data|date:"d/m/Y H:i" }}{% else %}nenhuma análise executada ainda{% endif %}.
+                    </p>
+
+                    <div class="mt-4">
+                        {% if plano_usuario.ia_habilitada %}
+                            <a href="{% url 'analise_ia' %}" class="btn btn-premium w-100">Abrir Análise Inteligente</a>
+                        {% else %}
+                            <form method="post" action="{% url 'checkout_premium' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-premium w-100">Liberar Inteligência Financeira</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </section>
+
+                <section class="smart-card smart-card-soft span-7">
+                    <div class="smart-card-header">
+                        <div>
+                            <p class="smart-label">Sugestão Principal</p>
+                            <h2 class="smart-title">Orientação automática</h2>
+                        </div>
+                    </div>
+
+                    <div class="smart-alert alert-info-soft mb-3">
+                        <i class="fa-solid fa-wand-magic-sparkles text-primary"></i>
+                        <div>
+                            <strong>{{ sugestao_ia_titulo|default:"Revise pequenos gastos recorrentes." }}</strong>
+                            <p>{{ sugestao_ia_texto|default:"O FinanPy pode destacar assinaturas, compras parceladas e despesas repetidas que parecem pequenas, mas pressionam o saldo no fim do mês." }}</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-list">
+                        <div class="settings-row">
+                            <div>
+                                <h3>Modo Anti-Descontrole</h3>
+                                <p>Alertas preventivos quando gastos por categoria passam do limite planejado.</p>
+                            </div>
+                            <span class="settings-pill {% if plano_usuario.eh_premium %}pill-success{% else %}pill-warning{% endif %}">
+                                {% if plano_usuario.eh_premium %}Disponível{% else %}Premium{% endif %}
+                            </span>
+                        </div>
+
+                        <div class="settings-row">
+                            <div>
+                                <h3>Modo Casal/Família</h3>
+                                <p>Organização compartilhada de metas, contas e compromissos financeiros.</p>
+                            </div>
+                            <span class="settings-pill {% if plano_usuario.eh_premium %}pill-success{% else %}pill-warning{% endif %}">
+                                {% if plano_usuario.eh_premium %}Disponível{% else %}Premium{% endif %}
+                            </span>
+                        </div>
+
+                        <div class="settings-row">
+                            <div>
+                                <h3>Simulador Financeiro</h3>
+                                <p>Projete saldo futuro, parcelas, metas e cenários de economia.</p>
+                            </div>
+                            <span class="settings-pill {% if plano_usuario.eh_premium %}pill-success{% else %}pill-warning{% endif %}">
+                                {% if plano_usuario.eh_premium %}Disponível{% else %}Premium{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="conta" role="tabpanel" aria-labelledby="conta-tab">
+            <div class="smart-grid">
+                <section class="smart-card smart-card-soft smart-form-card span-6">
+                    <div class="smart-card-header">
+                        <div>
+                            <p class="smart-label">Perfil Da Conta</p>
+                            <h2 class="smart-title">Dados principais</h2>
+                            <p class="smart-muted">Atualize nome, e-mail e nome de usuário.</p>
+                        </div>
+                    </div>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="row">
+                            {% for field in perfil_form %}
+                                <div class="col-md-6 mb-3">
+                                    <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% for error in field.errors %}
+                                        <div class="text-danger small">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" name="salvar_perfil" class="btn btn-premium">Salvar Perfil</button>
+                    </form>
+                </section>
+
+                <section class="smart-card smart-card-soft smart-form-card span-6">
+                    <div class="smart-card-header">
+                        <div>
+                            <p class="smart-label">Preferências Do Painel</p>
+                            <h2 class="smart-title">Personalização financeira</h2>
+                            <p class="smart-muted">Controle moeda, alertas, privacidade do saldo e comportamento do painel.</p>
+                        </div>
+                    </div>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="row">
+                            {% for field in preferencias_form %}
+                                <div class="{% if field.field.widget.input_type == 'checkbox' %}col-12{% else %}col-md-6{% endif %} mb-3">
+                                    <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                                    {% if field.field.widget.input_type == 'checkbox' %}
+                                        <div class="form-check form-switch settings-switch">{{ field }}</div>
+                                    {% else %}
+                                        {{ field }}
+                                    {% endif %}
+                                    {% for error in field.errors %}
+                                        <div class="text-danger small">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" name="salvar_preferencias" class="btn btn-premium">Salvar Preferências</button>
+                    </form>
+                </section>
+
+                <section class="smart-card smart-card-soft span-12">
+                    <div class="smart-card-header">
+                        <div>
+                            <p class="smart-label">Preferências Inteligentes Sugeridas</p>
+                            <h2 class="smart-title">Próximos campos para criar no backend</h2>
+                            <p class="smart-muted">Essas opções deixam a experiência mais personalizada quando forem adicionadas ao model/form de preferências.</p>
+                        </div>
+                    </div>
+
+                    <div class="smart-grid">
+                        <div class="settings-row span-6">
+                            <div>
+                                <h3>Alerta de excesso de gastos</h3>
+                                <p>Notificar quando uma categoria ultrapassar o limite mensal.</p>
+                            </div>
+                            <span class="settings-pill pill-info">Recomendado</span>
+                        </div>
+                        <div class="settings-row span-6">
+                            <div>
+                                <h3>Resumo semanal inteligente</h3>
+                                <p>Enviar um resumo com saldo previsto, contas próximas e risco do mês.</p>
+                            </div>
+                            <span class="settings-pill pill-info">Recomendado</span>
+                        </div>
+                        <div class="settings-row span-6">
+                            <div>
+                                <h3>Meta automática pela renda</h3>
+                                <p>Calcular uma meta mensal de economia proporcional ao salário informado.</p>
+                            </div>
+                            <span class="settings-pill pill-dark">Futuro</span>
+                        </div>
+                        <div class="settings-row span-6">
+                            <div>
+                                <h3>Modo foco financeiro</h3>
+                                <p>Ocultar distrações e destacar apenas metas, dívidas e saldo previsto.</p>
+                            </div>
+                            <span class="settings-pill pill-dark">Futuro</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="seguranca" role="tabpanel" aria-labelledby="seguranca-tab">
+            <div class="smart-grid">
+                <section class="smart-card smart-card-soft smart-form-card span-8">
+                    <div class="smart-card-header">
+                        <div>
+                            <p class="smart-label">Segurança Da Conta</p>
+                            <h2 class="smart-title">Alterar senha</h2>
+                            <p class="smart-muted">Altere sua senha periodicamente para manter a conta protegida.</p>
+                        </div>
+                        <span class="settings-pill pill-success"><i class="fa-solid fa-lock"></i> Proteção</span>
+                    </div>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="row">
+                            {% for field in senha_form %}
+                                <div class="col-md-4 mb-3">
+                                    <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% if field.help_text %}
+                                        <div class="form-text register-help-text">{{ field.help_text|safe }}</div>
+                                    {% endif %}
+                                    {% for error in field.errors %}
+                                        <div class="text-danger small">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" name="alterar_senha" class="btn btn-premium-danger">Alterar Senha</button>
+                    </form>
+                </section>
+
+                <aside class="smart-card smart-card-soft span-4">
+                    <div class="smart-card-header">
+                        <div>
+                            <p class="smart-label">Checklist</p>
+                            <h2 class="smart-title">Segurança recomendada</h2>
+                        </div>
+                    </div>
+
+                    <div class="settings-list">
+                        <div class="settings-row">
+                            <div>
+                                <h3>Senha forte</h3>
+                                <p>Evite datas, nomes e sequências simples.</p>
+                            </div>
+                            <i class="fa-solid fa-circle-check text-success"></i>
+                        </div>
+                        <div class="settings-row">
+                            <div>
+                                <h3>E-mail confirmado</h3>
+                                <p>Importante para recuperação de acesso.</p>
+                            </div>
+                            <i class="fa-solid fa-circle-info text-primary"></i>
+                        </div>
+                        <div class="settings-row">
+                            <div>
+                                <h3>2FA</h3>
+                                <p>Próxima camada de segurança para contas premium.</p>
+                            </div>
+                            <span class="settings-pill pill-dark">Futuro</span>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="privacidade" role="tabpanel" aria-labelledby="privacidade-tab">
+            <div class="smart-grid">
+                <section class="smart-card smart-card-soft span-7">
+                    <div class="smart-card-header">
+                        <div>
+                            <p class="smart-label">Privacidade</p>
+                            <h2 class="smart-title">Controle de exposição</h2>
+                            <p class="smart-muted">Configurações para proteger valores sensíveis em ambientes públicos e compartilhados.</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-list">
+                        <div class="settings-row">
+                            <div>
+                                <h3>Ocultar valores no painel</h3>
+                                <p>Ideal para usar o FinanPy em locais públicos ou durante demonstrações.</p>
+                            </div>
+                            <span class="settings-pill {% if saldo_oculto %}pill-success{% else %}pill-dark{% endif %}">
+                                {% if saldo_oculto %}Ativo{% else %}Inativo{% endif %}
+                            </span>
+                        </div>
+                        <div class="settings-row">
+                            <div>
+                                <h3>Alertas inteligentes</h3>
+                                <p>Notificações sobre contas próximas, excesso de gastos e metas atrasadas.</p>
+                            </div>
+                            <span class="settings-pill {% if notificacoes_ativas %}pill-success{% else %}pill-warning{% endif %}">
+                                {% if notificacoes_ativas %}Ativos{% else %}Configurar{% endif %}
+                            </span>
+                        </div>
+                        <div class="settings-row">
+                            <div>
+                                <h3>Exportação de dados</h3>
+                                <p>Permita que o usuário baixe um resumo das próprias informações financeiras.</p>
+                            </div>
+                            <span class="settings-pill pill-dark">Futuro</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="smart-card smart-card-soft danger-zone span-5">
+                    <div class="smart-card-header">
+                        <div>
+                            <p class="smart-label">Zona De Risco</p>
+                            <h2 class="smart-title">Excluir conta</h2>
+                            <p class="smart-muted">Esta ação remove definitivamente dados, transações, metas e histórico.</p>
+                        </div>
+                    </div>
+                    <form method="post" action="{% url 'excluir_conta_usuario' %}">
+                        {% csrf_token %}
+                        {% for field in excluir_conta_form %}
+                            <div class="mb-3">
+                                <label for="{{ field.id_for_label }}" class="field-label">{{ field.label }}</label>
+                                {{ field }}
+                                {% for error in field.errors %}
+                                    <div class="text-danger small">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                        <button type="submit" class="btn btn-premium-danger w-100">Excluir Minha Conta</button>
+                    </form>
+                </section>
+            </div>
+        </div>
+    </div>
+</section>
 {% endblock %}

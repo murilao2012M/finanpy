@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load financeiro_extras %}
+
+{% block content %}
+<section class="hero-panel mb-4">
+    <div>
+        <span class="eyebrow">Recurso Premium</span>
+        <h1 class="page-title">{{ titulo }}</h1>
+        <p class="page-subtitle">{{ exemplo_resultado }}</p>
+    </div>
+    <form method="post" action="{{ checkout_url }}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-premium">
+            <i class="fa-solid fa-crown me-2"></i>
+            {{ botao_texto }}
+        </button>
+    </form>
+</section>
+
+<div class="dashboard-layout mb-4">
+    <section class="card-modern card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">O Que Você Desbloqueia</h2>
+                <p class="panel-subtitle">O Premium transforma o FinanPy em um assistente financeiro mais completo e preventivo.</p>
+            </div>
+            <span class="status-pill status-paid">R$ 10,50 / 30 dias</span>
+        </div>
+
+        <div class="goal-list">
+            {% for beneficio in beneficios %}
+                <article class="goal-item">
+                    <div class="goal-item-top">
+                        <div>
+                            <h3>Benefício Premium</h3>
+                            <p>{{ beneficio }}</p>
+                        </div>
+                        <i class="fa-solid fa-circle-check text-success"></i>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="card-modern card-body-modern">
+        <div class="panel-header mb-4">
+            <div>
+                <h2 class="panel-title">Free Vs Premium</h2>
+                <p class="panel-subtitle">Compare rapidamente a experiência atual com o plano completo.</p>
+            </div>
+        </div>
+
+        <div class="goal-list">
+            {% for item in comparacao %}
+                <article class="goal-item">
+                    <div class="goal-item-top">
+                        <div>
+                            <h3>{{ item.plano }}</h3>
+                            <p>{{ item.descricao }}</p>
+                        </div>
+                        <span class="status-pill {% if item.plano == 'Premium' %}status-paid{% else %}status-pending{% endif %}">
+                            {{ item.plano }}
+                        </span>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+
+        <form method="post" action="{{ checkout_url }}" class="mt-4">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-premium w-100">Assinar Plano De 30 Dias</button>
+        </form>
+        <a href="{% url rota_retorno %}" class="btn btn-premium-outline w-100 mt-2">Voltar</a>
+    </section>
+</div>
+{% endblock %}

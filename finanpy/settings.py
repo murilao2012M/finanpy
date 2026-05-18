@@ -282,9 +282,6 @@ MERCADO_PAGO_PUBLIC_KEY = os.getenv("MERCADO_PAGO_PUBLIC_KEY", "")
 MERCADO_PAGO_BASE_URL = os.getenv("MERCADO_PAGO_BASE_URL", "https://api.mercadopago.com")
 FINANPY_SITE_URL = os.getenv("FINANPY_SITE_URL", "http://127.0.0.1:8000")
 MERCADO_PAGO_WEBHOOK_SECRET = os.getenv("MERCADO_PAGO_WEBHOOK_SECRET", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
-OPENAI_TIMEOUT_SECONDS = int(os.getenv("OPENAI_TIMEOUT_SECONDS", "60"))
 
 # E-mail transacional: confirmação de cadastro e recuperação de senha.
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")

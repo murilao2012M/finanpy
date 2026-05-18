@@ -14,6 +14,19 @@
     </a>
 </section>
 
+<section class="dashboard-grid dashboard-metrics mb-4">
+    {% for item in parcelas_futuras %}
+        <article class="metric-card card-modern">
+            <p class="metric-label">{{ item.mes }}</p>
+            <h2 class="metric-value">{{ item.total_parcelado|brl }}</h2>
+            <span class="metric-trend text-info">
+                <i class="fa-solid fa-layer-group"></i>
+                {{ item.quantidade_parcelas }} parcela(s)
+            </span>
+        </article>
+    {% endfor %}
+</section>
+
 <section class="card-modern">
     <div class="card-body-modern">
         <div class="panel-header mb-4">
@@ -21,6 +34,13 @@
                 <h2 class="panel-title">Cartões cadastrados</h2>
                 <p class="panel-subtitle">Painel rápido de limite, vencimento e status.</p>
             </div>
+            <form method="get" class="toolbar-filter">
+                <div>
+                    <label for="mes" class="field-label">Mês</label>
+                    <input type="month" name="mes" id="mes" value="{{ mes_filtro }}" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-panel">Atualizar</button>
+            </form>
         </div>
         <div class="table-responsive">
             <table class="table table-dark-finance align-middle">
@@ -28,6 +48,9 @@
                     <tr>
                         <th>Nome</th>
                         <th>Limite</th>
+                        <th>Fatura</th>
+                        <th>DisponÃ­vel</th>
+                        <th>Uso</th>
                         <th>Fechamento</th>
                         <th>Vencimento</th>
                         <th>Status</th>
@@ -39,6 +62,9 @@
                         <tr>
                             <td class="table-title">{{ cartao.nome }}</td>
                             <td>{{ cartao.limite|brl }}</td>
+                            <td>{{ cartao.fatura_atual.total_fatura|brl }}</td>
+                            <td>{{ cartao.fatura_atual.limite_disponivel|brl }}</td>
+                            <td>{{ cartao.fatura_atual.percentual_usado }}%</td>
                             <td>Dia {{ cartao.dia_fechamento }}</td>
                             <td>Dia {{ cartao.dia_vencimento }}</td>
                             <td>
@@ -55,7 +81,7 @@
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center text-secondary">Nenhum cartão cadastrado.</td>
+                            <td colspan="9" class="text-center text-secondary">Nenhum cartão cadastrado.</td>
                         </tr>
                     {% endfor %}
                 </tbody>

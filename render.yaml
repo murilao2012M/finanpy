@@ -39,9 +39,3 @@ services:
         sync: false
       - key: MERCADO_PAGO_BASE_URL
         value: https://api.mercadopago.com
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: OPENAI_MODEL
-        value: gpt-5-mini
-      - key: OPENAI_TIMEOUT_SECONDS
-        value: "60"
