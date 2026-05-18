@@ -1128,8 +1128,8 @@ def mensagem_erro_email_transacional(erro):
         )
 
     return (
-        "Não foi possível enviar o e-mail de confirmação. Abra os logs do Render para ver o erro técnico completo "
-        "e confira as credenciais SMTP da Brevo."
+        "Não foi possível enviar o e-mail de confirmação. Se você estiver no Render Free, prefira "
+        "EMAIL_BACKEND=financeiro.email_backends.BrevoAPIEmailBackend com BREVO_API_KEY configurada."
     )
 
 def calcular_percentual_limite(total_usado, limite_total):

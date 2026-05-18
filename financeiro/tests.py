@@ -10,11 +10,13 @@ import smtplib
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.core.mail import EmailMessage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
 from .forms import FotoPerfilForm
+from .email_backends import BrevoAPIEmailBackend
 from .ia_financeira import MODELO_ANALISE_LOCAL, gerar_analise_financeira_local
 from .mercado_pago import MercadoPagoClient, MercadoPagoErro, RespostaAssinaturaMercadoPago
 from .models import CartaoCredito, Categoria, ConfiguracaoUsuario, EventoAssinatura, Lancamento, MetaFinanceira, Notificacao, PlanoUsuario
@@ -234,6 +236,34 @@ class CadastroUsuarioEmailTests(TestCase):
         mensagem = mensagem_erro_email_transacional(erro)
 
         self.assertIn("DEFAULT_FROM_EMAIL", mensagem)
+
+    @override_settings(
+        BREVO_API_KEY="chave-api-teste",
+        DEFAULT_FROM_EMAIL="FinanPy <suporte@finanpy.com.br>",
+    )
+    def test_backend_brevo_api_monta_payload_transacional(self):
+        """Backend HTTP da Brevo precisa montar payload sem usar porta SMTP."""
+        backend = BrevoAPIEmailBackend()
+        payloads = []
+
+        def postar_payload_fake(payload):
+            payloads.append(payload)
+            return True
+
+        backend._postar_payload = postar_payload_fake
+        mensagem = EmailMessage(
+            subject="Confirme seu cadastro",
+            body="Clique no link para ativar sua conta.",
+            from_email="FinanPy <suporte@finanpy.com.br>",
+            to=["cliente@exemplo.com"],
+        )
+
+        enviados = backend.send_messages([mensagem])
+
+        self.assertEqual(enviados, 1)
+        self.assertEqual(payloads[0]["sender"]["email"], "suporte@finanpy.com.br")
+        self.assertEqual(payloads[0]["to"][0]["email"], "cliente@exemplo.com")
+        self.assertEqual(payloads[0]["subject"], "Confirme seu cadastro")
 
 
 class AnaliseFinanceiraLocalTests(TestCase):

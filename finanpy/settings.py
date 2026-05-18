@@ -293,6 +293,9 @@ EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", False)
 EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "20"))
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "FinanPy <no-reply@finanpy.com>")
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+BREVO_API_URL = os.getenv("BREVO_API_URL", "https://api.brevo.com/v3/smtp/email")
+BREVO_API_TIMEOUT = int(os.getenv("BREVO_API_TIMEOUT", "20"))
 
 
 # Logs estruturados para acompanhar erros reais no terminal local e no Render.

@@ -40,7 +40,7 @@ services:
       - key: MERCADO_PAGO_BASE_URL
         value: https://api.mercadopago.com
       - key: EMAIL_BACKEND
-        value: django.core.mail.backends.smtp.EmailBackend
+        value: financeiro.email_backends.BrevoAPIEmailBackend
       - key: EMAIL_HOST
         sync: false
       - key: EMAIL_PORT
@@ -57,3 +57,9 @@ services:
         value: "20"
       - key: DEFAULT_FROM_EMAIL
         sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_API_URL
+        value: https://api.brevo.com/v3/smtp/email
+      - key: BREVO_API_TIMEOUT
+        value: "20"
